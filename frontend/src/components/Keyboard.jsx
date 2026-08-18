@@ -38,6 +38,17 @@ const KEY_MAP = {
   '{altl}': 'AltLeft', '{altr}': 'AltRight', '{space}': 'Space',
 }
 
+const MAX_FN_PER_LINE = 4
+const NO_WRAP_KEYS = new Set(['ControlLeft', 'AltLeft', 'Space', 'AltRight', 'ControlRight'])
+
+function wrapFnText(text) {
+  const parts = []
+  for (let i = 0; i < text.length; i += MAX_FN_PER_LINE) {
+    parts.push(text.slice(i, i + MAX_FN_PER_LINE))
+  }
+  return parts.join('<br>')
+}
+
 export default function KeymapKeyboard() {
   const { keymap, moveKey, updateKey } = useKeymap()
   const [editingKey, setEditingKey] = useState(null)
@@ -66,7 +77,10 @@ export default function KeymapKeyboard() {
     for (const [layoutKey, keyName] of Object.entries(KEY_MAP)) {
       const mapping = keymap[keyName]
       if (mapping?.function) {
-        d[layoutKey] = `${mapping.label}<br><span class="hg-key-fn">${mapping.function}</span>`
+        const noWrap = NO_WRAP_KEYS.has(keyName)
+        const fnClass = noWrap ? 'hg-key-fn hg-key-fn-nowrap' : 'hg-key-fn'
+        const fnText = noWrap ? mapping.function : wrapFnText(mapping.function)
+        d[layoutKey] = `<span class="hg-key-label">${mapping.label}</span><span class="${fnClass}"><span class="hg-key-fn-text">${fnText}</span></span>`
       } else {
         d[layoutKey] = mapping?.label || keyName
       }
