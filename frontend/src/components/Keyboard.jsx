@@ -5,6 +5,7 @@ import { useKeymap } from '../store/keymapContext'
 
 const LAYOUT = {
   default: [
+    '{esc} f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12',
     '` 1 2 3 4 5 6 7 8 9 0 - = {bksp}',
     '{tab} q w e r t y u i o p [ ] \\',
     '{caps} a s d f g h j k l ; \' {enter}',
@@ -14,6 +15,9 @@ const LAYOUT = {
 }
 
 const KEY_MAP = {
+  '{esc}': 'Escape', 'f1': 'F1', 'f2': 'F2', 'f3': 'F3', 'f4': 'F4',
+  'f5': 'F5', 'f6': 'F6', 'f7': 'F7', 'f8': 'F8',
+  'f9': 'F9', 'f10': 'F10', 'f11': 'F11', 'f12': 'F12',
   '`': 'Backquote', '1': 'Digit1', '2': 'Digit2', '3': 'Digit3',
   '4': 'Digit4', '5': 'Digit5', '6': 'Digit6', '7': 'Digit7',
   '8': 'Digit8', '9': 'Digit9', '0': 'Digit0', '-': 'Minus',

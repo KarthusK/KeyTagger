@@ -123,10 +123,24 @@ def build_frontend() -> bool:
     return True
 
 
+def check_paddleocr_models() -> None:
+    """检查 PaddleOCR 模型是否已下载，缺失时自动下载"""
+    log("检查 PaddleOCR 模型...", Colors.YELLOW)
+    sys.path.insert(0, str(ROOT))
+    try:
+        from paddleocr import PaddleOCR
+        PaddleOCR(use_textline_orientation=False, lang="ch", show_log=False)
+        log("PaddleOCR 模型就绪", Colors.GREEN)
+    except Exception as e:
+        log(f"PaddleOCR 模型下载失败: {e}", Colors.RED)
+        sys.exit(1)
+
+
 def start_production() -> None:
-    """生产模式：检查依赖 → 构建前端 → 后端提供服务（单进程）"""
+    """生产模式：检查依赖 → 检查模型 → 构建前端 → 后端提供服务（单进程）"""
     if not check_backend_deps():
         sys.exit(1)
+    check_paddleocr_models()
     if not build_frontend():
         sys.exit(1)
 
@@ -151,9 +165,10 @@ def start_production() -> None:
 
 
 def start_dev() -> None:
-    """开发模式：检查依赖 → 后台后端 + 前台 Vite 热更新"""
+    """开发模式：检查依赖 → 检查模型 → 后台后端 + 前台 Vite 热更新"""
     if not check_backend_deps():
         sys.exit(1)
+    check_paddleocr_models()
     log("启动开发模式...", Colors.CYAN)
 
     python = sys.executable
