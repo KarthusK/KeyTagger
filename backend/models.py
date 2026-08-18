@@ -20,6 +20,12 @@ class UpdateKeyRequest(BaseModel):
     function: str
 
 
+class MoveKeyRequest(BaseModel):
+    """移动/覆盖按键绑定的请求"""
+    source: str
+    target: str
+
+
 class OCRResult(BaseModel):
     """OCR 识别结果"""
     text: str

@@ -34,3 +34,9 @@ cd frontend && npm run dev    # Vite 开发服务器（端口 3000，代理 /api
 
 - 注释用中文；前端 `React` 函数组件 + `useState`/`useCallback`，状态走 `store/keymapContext.jsx` 的 Context。
 - API 返回格式统一为 `{"success": true, "keymap": {...}}`，`keymap` 值形如 `{key_name, label, function}`。
+
+## Commit 规范
+
+- 使用多行形式：首行 `type: 中文概要`（type 用 feat/fix/docs/refactor/chore），空一行后用 `- ` 列出要点
+- 要点条数控制在 1-4 行，概括改动与行为影响，不写代码细节
+- 只提交本次相关文件，不加多余文件

@@ -254,8 +254,20 @@ body {
   border-color: #b3d4ff;
   color: #1a5cc8;
   font-weight: 600;
+  cursor: grab;
 }
 
 .simple-keyboard .hg-key-has-function:hover {
   background: #c8dfff;
+}
+
+.simple-keyboard .hg-dragging {
+  opacity: 0.4;
+}
+
+.simple-keyboard .hg-drop-target {
+  background: #d9f5d9;
+  border-color: #7cc97c;
+  color: #1a8a1a;
+  box-shadow: 0 0 0 2px #7cc97c inset;
 }

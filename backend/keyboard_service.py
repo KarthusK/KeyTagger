@@ -40,6 +40,16 @@ class KeyboardService:
             if key_name in self._mappings:
                 self._mappings[key_name].function = function
 
+    def move(self, from_key: str, to_key: str) -> Optional[Dict[str, KeyMapping]]:
+        """把 from_key 的绑定移动/覆盖到 to_key，from_key 清空"""
+        src = self._mappings.get(from_key)
+        dst = self._mappings.get(to_key)
+        if src is None or dst is None or from_key == to_key or not src.function:
+            return None
+        dst.function = src.function
+        src.function = ""
+        return self.get_all()
+
     def reset(self):
         """重置所有按键功能"""
         for key_name in self._mappings:

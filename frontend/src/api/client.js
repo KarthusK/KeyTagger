@@ -27,6 +27,14 @@ export async function updateKey(keyName, functionName) {
   return res.data
 }
 
+export async function moveKey(source, target) {
+  const res = await api.post('/keymap/move', {
+    source,
+    target,
+  })
+  return res.data
+}
+
 export async function exportKeymap() {
   const res = await api.post('/export', {}, { responseType: 'blob' })
   return res.data

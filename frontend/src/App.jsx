@@ -78,7 +78,7 @@ export default function App() {
             </div>
           </div>
           <KeymapKeyboard />
-          <p className="keyboard-hint">点击任意按键可编辑其功能名称</p>
+          <p className="keyboard-hint">点击任意按键可编辑其功能名称，拖拽已绑定按键可移动到其他按键上</p>
         </section>
       </main>
     </div>

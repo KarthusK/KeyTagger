@@ -43,6 +43,18 @@ export function KeymapProvider({ children }) {
     }
   }, [])
 
+  const handleMoveKey = useCallback(async (source, target) => {
+    setError(null)
+    try {
+      const data = await api.moveKey(source, target)
+      if (data.success) {
+        setKeymap(data.keymap)
+      }
+    } catch (e) {
+      setError(e.response?.data?.detail || '移动绑定失败，请重试')
+    }
+  }, [])
+
   const handleExport = useCallback(async () => {
     try {
       const blob = await api.exportKeymap()
@@ -74,6 +86,7 @@ export function KeymapProvider({ children }) {
       keymap, loading, error,
       upload: handleUpload,
       updateKey: handleUpdateKey,
+      moveKey: handleMoveKey,
       export: handleExport,
       reset: handleReset,
     }}>

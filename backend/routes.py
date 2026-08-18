@@ -3,7 +3,7 @@ import json
 import uuid
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from fastapi.responses import FileResponse
-from backend.models import UpdateKeyRequest
+from backend.models import UpdateKeyRequest, MoveKeyRequest
 from backend.keyboard_service import keyboard_service
 from backend.ocr_service import ocr_service
 from backend.config import UPLOAD_DIR, MAX_UPLOAD_SIZE
@@ -59,6 +59,15 @@ async def update_key(req: UpdateKeyRequest):
     result = keyboard_service.update(req.key_name, req.function)
     if result is None:
         raise HTTPException(404, f"按键 {req.key_name} 不存在")
+    return {"success": True, "keymap": _serialize_keymap()}
+
+
+@router.post("/keymap/move")
+async def move_key(req: MoveKeyRequest):
+    """把 source 键的绑定移动/覆盖到 target 键，source 键清空"""
+    result = keyboard_service.move(req.source, req.target)
+    if result is None:
+        raise HTTPException(400, "移动失败：按键不存在、源等于目标或源键未绑定")
     return {"success": True, "keymap": _serialize_keymap()}
 
 

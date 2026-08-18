@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import Keyboard from 'react-simple-keyboard'
 import 'react-simple-keyboard/build/css/index.css'
 import { useKeymap } from '../store/keymapContext'
@@ -39,9 +39,27 @@ const KEY_MAP = {
 }
 
 export default function KeymapKeyboard() {
-  const { keymap, updateKey } = useKeymap()
+  const { keymap, moveKey, updateKey } = useKeymap()
   const [editingKey, setEditingKey] = useState(null)
   const [editValue, setEditValue] = useState('')
+  const kRef = useRef(null)
+  const pendingEditRef = useRef(null)
+  const dragSourceRef = useRef(null)
+  const dragElementRef = useRef(null)
+  const dropTargetRef = useRef(null)
+
+  useEffect(() => {
+    const kb = kRef.current
+    if (!kb) return
+    Object.entries(KEY_MAP).forEach(([button, keyName]) => {
+      const elements = kb.getButtonElement(button)
+      const list = Array.isArray(elements) ? elements : [elements]
+      const draggable = Boolean(keymap[keyName]?.function)
+      list.forEach((el) => {
+        if (el) el.draggable = draggable
+      })
+    })
+  }, [keymap])
 
   const display = useMemo(() => {
     const d = {}
@@ -56,15 +74,33 @@ export default function KeymapKeyboard() {
     return d
   }, [keymap])
 
+  const boundButtons = Object.entries(KEY_MAP)
+    .filter(([, kn]) => keymap[kn]?.function)
+    .map(([k]) => k)
+    .join(' ')
+
+  const getPointedKey = useCallback((e) => {
+    const el = e.target.closest('[data-skbtn]')
+    const keyName = el && KEY_MAP[el.dataset.skbtn]
+    return { el, keyName }
+  }, [])
+
   const handleKeyPress = useCallback((button) => {
     const keyName = KEY_MAP[button]
     if (!keyName) return
-    const mapping = keymap[keyName]
+    pendingEditRef.current = keyName
+  }, [])
+
+  const handleClick = useCallback((e) => {
+    const { keyName } = getPointedKey(e)
+    pendingEditRef.current = null
+    if (!keyName) return
     setEditingKey(keyName)
-    setEditValue(mapping?.function || '')
-  }, [keymap])
+    setEditValue(keymap[keyName]?.function || '')
+  }, [getPointedKey, keymap])
 
   const handleSave = useCallback(() => {
+    pendingEditRef.current = null
     if (editingKey) {
       updateKey(editingKey, editValue)
     }
@@ -73,9 +109,67 @@ export default function KeymapKeyboard() {
   }, [editingKey, editValue, updateKey])
 
   const handleCancel = useCallback(() => {
+    pendingEditRef.current = null
     setEditingKey(null)
     setEditValue('')
   }, [])
+
+  const clearDragHighlights = useCallback(() => {
+    if (dropTargetRef.current) {
+      dropTargetRef.current.classList.remove('hg-drop-target')
+      dropTargetRef.current = null
+    }
+    if (dragElementRef.current) {
+      dragElementRef.current.classList.remove('hg-dragging')
+      dragElementRef.current = null
+    }
+  }, [])
+
+  const handleDragStart = useCallback((e) => {
+    pendingEditRef.current = null
+    const { el, keyName } = getPointedKey(e)
+    if (!keyName || !keymap[keyName]?.function) {
+      e.preventDefault()
+      return
+    }
+    dragSourceRef.current = keyName
+    dragElementRef.current = el
+    e.dataTransfer.setData('text/plain', keyName)
+    e.dataTransfer.effectAllowed = 'move'
+    el.classList.add('hg-dragging')
+  }, [getPointedKey, keymap])
+
+  const handleDragOver = useCallback((e) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    const { el, keyName } = getPointedKey(e)
+    if (!el || !keyName || keyName === dragSourceRef.current) return
+    if (dropTargetRef.current && dropTargetRef.current !== el) {
+      dropTargetRef.current.classList.remove('hg-drop-target')
+      dropTargetRef.current = null
+    }
+    if (!el.classList.contains('hg-drop-target')) {
+      el.classList.add('hg-drop-target')
+      dropTargetRef.current = el
+    }
+  }, [getPointedKey])
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault()
+    pendingEditRef.current = null
+    const { keyName: targetKey } = getPointedKey(e)
+    const sourceKey = dragSourceRef.current || e.dataTransfer.getData('text/plain')
+    clearDragHighlights()
+    dragSourceRef.current = null
+    if (sourceKey && targetKey && sourceKey !== targetKey) {
+      moveKey(sourceKey, targetKey)
+    }
+  }, [getPointedKey, moveKey, clearDragHighlights])
+
+  const handleDragEnd = useCallback(() => {
+    dragSourceRef.current = null
+    clearDragHighlights()
+  }, [clearDragHighlights])
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Enter') handleSave()
@@ -83,20 +177,20 @@ export default function KeymapKeyboard() {
   }, [handleSave, handleCancel])
 
   return (
-    <div className="keyboard-container">
+    <div
+      className="keyboard-container"
+      onClick={handleClick}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+      onDragEnd={handleDragEnd}
+    >
       <Keyboard
+        keyboardRef={(instance) => { kRef.current = instance }}
         layout={LAYOUT}
         display={display}
         onKeyPress={handleKeyPress}
-        buttonTheme={[
-          {
-            class: 'hg-key-has-function',
-            buttons: Object.entries(KEY_MAP)
-              .filter(([, kn]) => keymap[kn]?.function)
-              .map(([k]) => k)
-              .join(' '),
-          },
-        ]}
+        buttonTheme={boundButtons ? [{ class: 'hg-key-has-function', buttons: boundButtons }] : []}
       />
 
       {editingKey && (
