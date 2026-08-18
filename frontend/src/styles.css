@@ -1,0 +1,261 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #f5f5f5;
+  color: #333;
+  min-height: 100vh;
+}
+
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+.subtitle {
+  color: #666;
+  margin-top: 4px;
+  font-size: 14px;
+}
+
+.upload-section {
+  margin-bottom: 24px;
+}
+
+.upload-zone {
+  border: 2px dashed #ccc;
+  border-radius: 12px;
+  padding: 32px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #fff;
+}
+
+.upload-zone:hover {
+  border-color: #4a90d9;
+  background: #f8faff;
+}
+
+.upload-zone.drag-over {
+  border-color: #4a90d9;
+  background: #e8f0fe;
+}
+
+.upload-icon {
+  font-size: 40px;
+  margin-bottom: 8px;
+}
+
+.upload-text {
+  font-size: 16px;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.upload-hint {
+  font-size: 12px;
+  color: #999;
+}
+
+.error-message {
+  margin-top: 12px;
+  padding: 10px 16px;
+  background: #fff0f0;
+  border: 1px solid #ffcccc;
+  border-radius: 8px;
+  color: #d32f2f;
+  font-size: 14px;
+}
+
+.keyboard-section {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.section-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.section-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.key-count {
+  font-size: 13px;
+  color: #666;
+  background: #f0f4ff;
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-weight: 500;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: #4a90d9;
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #357abd;
+}
+
+.btn-secondary {
+  background: #e8e8e8;
+  color: #555;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #d5d5d5;
+}
+
+.keyboard-container {
+  position: relative;
+}
+
+.keyboard-hint {
+  text-align: center;
+  font-size: 12px;
+  color: #999;
+  margin-top: 12px;
+}
+
+.edit-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.edit-modal {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  width: 360px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+}
+
+.edit-modal h3 {
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+
+.edit-hint {
+  font-size: 13px;
+  color: #888;
+  margin-bottom: 12px;
+}
+
+.edit-modal input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.edit-modal input:focus {
+  border-color: #4a90d9;
+}
+
+.edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* 自定义键盘样式 */
+.simple-keyboard {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.simple-keyboard .hg-button {
+  height: 52px;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.1s;
+  overflow: hidden;
+  padding: 2px 4px;
+}
+
+.simple-keyboard .hg-key-fn {
+  font-size: 10px;
+  font-weight: 400;
+  color: #555;
+  line-height: 1.1;
+}
+
+.simple-keyboard .hg-button:hover {
+  background: #e0e0e0;
+  border-color: #bbb;
+}
+
+.simple-keyboard .hg-key-has-function {
+  background: #e3f0ff;
+  border-color: #b3d4ff;
+  color: #1a5cc8;
+  font-weight: 600;
+}
+
+.simple-keyboard .hg-key-has-function:hover {
+  background: #c8dfff;
+}
