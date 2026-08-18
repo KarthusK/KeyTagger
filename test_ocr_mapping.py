@@ -61,6 +61,13 @@ def build_label_to_keyname() -> dict[str, str]:
         label = info["label"].lower()
         if label not in mapping:
             mapping[label] = key_name
+        # 左右键注册 L/R 前缀变体
+        if "Left" in key_name:
+            for prefix in ("l", "left"):
+                mapping[prefix + label] = key_name
+        elif "Right" in key_name:
+            for prefix in ("r", "right"):
+                mapping[prefix + label] = key_name
     return mapping
 
 

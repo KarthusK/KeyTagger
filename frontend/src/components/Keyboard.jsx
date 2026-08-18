@@ -9,8 +9,8 @@ const LAYOUT = {
     '` 1 2 3 4 5 6 7 8 9 0 - = {bksp}',
     '{tab} q w e r t y u i o p [ ] \\',
     '{caps} a s d f g h j k l ; \' {enter}',
-    '{shift} z x c v b n m , . / {shift}',
-    '{ctrl} {alt} {space} {alt} {ctrl}',
+    '{shiftl} z x c v b n m , . / {shiftr}',
+    '{ctrll} {altl} {space} {altr} {ctrlr}',
   ],
 }
 
@@ -30,10 +30,12 @@ const KEY_MAP = {
   'f': 'KeyF', 'g': 'KeyG', 'h': 'KeyH', 'j': 'KeyJ',
   'k': 'KeyK', 'l': 'KeyL', ';': 'Semicolon', "'": 'Quote',
   '{enter}': 'Enter',
-  '{shift}': 'ShiftLeft', 'z': 'KeyZ', 'x': 'KeyX', 'c': 'KeyC',
+  '{shiftl}': 'ShiftLeft', 'z': 'KeyZ', 'x': 'KeyX', 'c': 'KeyC',
   'v': 'KeyV', 'b': 'KeyB', 'n': 'KeyN', 'm': 'KeyM',
   ',': 'Comma', '.': 'Period', '/': 'Slash',
-  '{ctrl}': 'ControlLeft', '{alt}': 'AltLeft', '{space}': 'Space',
+  '{shiftr}': 'ShiftRight',
+  '{ctrll}': 'ControlLeft', '{ctrlr}': 'ControlRight',
+  '{altl}': 'AltLeft', '{altr}': 'AltRight', '{space}': 'Space',
 }
 
 export default function KeymapKeyboard() {

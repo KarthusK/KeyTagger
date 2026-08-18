@@ -11,9 +11,10 @@ class OCRService:
     使用 PaddleOCR 识别图片中的文字及坐标，然后根据坐标智能映射到标准 QWERTY 键盘按键。
     """
 
-    def __init__(self):
+    def __init__(self, confidence_threshold: float = 0.6):
         self._ocr = None
         self._ensure_upload_dir()
+        self.confidence_threshold = confidence_threshold
 
     def _ensure_upload_dir(self):
         os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -23,25 +24,34 @@ class OCRService:
         if self._ocr is None:
             try:
                 from paddleocr import PaddleOCR
-                # 使用轻量级模型，首次运行会自动下载
                 self._ocr = PaddleOCR(use_angle_cls=False, lang="ch", show_log=False)
             except ImportError:
                 raise ImportError("请先安装 PaddleOCR: pip install paddleocr")
         return self._ocr
 
+    def _preprocess(self, image_path: str) -> str:
+        """预处理入口：当前直接返回原图路径，不做额外处理"""
+        return image_path
+
     def recognize(self, image_path: str) -> List[OCRResult]:
         """
         对图片进行 OCR 识别，返回识别结果列表。
-        每个结果包含识别文本和其边界框坐标 (x, y, w, h)。
+        每个结果包含识别文本、置信度和边界框坐标 (x, y, w, h)。
+        低于置信度阈值的结果会被过滤。
         """
+        processed = self._preprocess(image_path)
         ocr = self._get_ocr()
-        results = ocr.ocr(image_path, cls=False)
+        results = ocr.ocr(processed, cls=False)
 
         ocr_results = []
         if results and results[0]:
             for line in results[0]:
                 bbox = line[0]  # [[x1,y1], [x2,y1], [x2,y2], [x1,y2]]
                 text = line[1][0]  # 识别文本
+                confidence = line[1][1]  # 置信度
+
+                if confidence < self.confidence_threshold:
+                    continue
 
                 # 计算边界框的中心坐标及宽高
                 xs = [p[0] for p in bbox]
@@ -51,7 +61,7 @@ class OCRService:
                 w = max(xs) - x
                 h = max(ys) - y
 
-                ocr_results.append(OCRResult(text=text, x=x, y=y, w=w, h=h))
+                ocr_results.append(OCRResult(text=text, confidence=confidence, x=x, y=y, w=w, h=h))
 
         return ocr_results
 
@@ -65,12 +75,21 @@ class OCRService:
         if not ocr_results:
             return {}
 
-        # 构建 label → key_name 反向映射（含大小写变体）
+        # 构建 label → key_name 反向映射（含大小写变体及 L/R 前缀）
         label_to_key: Dict[str, str] = {}
         for key_name, info in QWERTY_LAYOUT.items():
             label = info["label"]
             for variant in {label, label.lower(), label.upper()}:
                 label_to_key.setdefault(variant, key_name)
+            # 左右键注册 L/R 前缀变体（如 LSHIFT→ShiftLeft, LALT→AltLeft）
+            if "Left" in key_name:
+                for prefix in ("L", "LEFT"):
+                    for variant in {prefix + label, (prefix + label).lower(), (prefix + label).upper()}:
+                        label_to_key.setdefault(variant, key_name)
+            elif "Right" in key_name:
+                for prefix in ("R", "RIGHT"):
+                    for variant in {prefix + label, (prefix + label).lower(), (prefix + label).upper()}:
+                        label_to_key.setdefault(variant, key_name)
 
         def match_key(text: str) -> str | None:
             """如果文本匹配某个按键标签，返回 key_name，否则返回 None"""

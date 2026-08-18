@@ -23,6 +23,7 @@ class UpdateKeyRequest(BaseModel):
 class OCRResult(BaseModel):
     """OCR 识别结果"""
     text: str
+    confidence: float = 0.0
     x: float
     y: float
     w: float
