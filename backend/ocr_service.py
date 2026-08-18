@@ -1,8 +1,13 @@
 import os
 os.environ["FLAGS_use_mkldnn"] = "0"
 from typing import List, Dict, Tuple
-from backend.config import QWERTY_LAYOUT, UPLOAD_DIR
+from backend.config import (
+    QWERTY_LAYOUT, UPLOAD_DIR,
+    CONFUSION_SHAPE, CONFUSION_ALPHA_NUM, CONFUSION_COMPOSITE,
+    OCR_CONFIDENCE_THRESHOLD, OCR_LANG,
+)
 from backend.models import OCRResult
+from backend.keyboard_service import keyboard_service
 
 
 class OCRService:
@@ -11,7 +16,7 @@ class OCRService:
     使用 PaddleOCR 识别图片中的文字及坐标，然后根据坐标智能映射到标准 QWERTY 键盘按键。
     """
 
-    def __init__(self, confidence_threshold: float = 0.6):
+    def __init__(self, confidence_threshold: float = OCR_CONFIDENCE_THRESHOLD):
         self._ocr = None
         self._ensure_upload_dir()
         self.confidence_threshold = confidence_threshold
@@ -24,7 +29,7 @@ class OCRService:
         if self._ocr is None:
             try:
                 from paddleocr import PaddleOCR
-                self._ocr = PaddleOCR(use_angle_cls=False, lang="ch", show_log=False)
+                self._ocr = PaddleOCR(use_angle_cls=False, lang=OCR_LANG, show_log=False)
             except ImportError:
                 raise ImportError("请先安装 PaddleOCR: pip install paddleocr")
         return self._ocr
@@ -91,9 +96,58 @@ class OCRService:
                     for variant in {prefix + label, (prefix + label).lower(), (prefix + label).upper()}:
                         label_to_key.setdefault(variant, key_name)
 
+        # 统计上下文：全图中字母键 vs 数字键的数量
+        letter_count = 0
+        digit_count = 0
+        for r in ocr_results:
+            k = label_to_key.get(r.text.strip())
+            if k and k.startswith("Key"):
+                letter_count += 1
+            elif k and k.startswith("Digit"):
+                digit_count += 1
+        prefer_letter = letter_count > digit_count
+
+        # 获取当前已绑定的键位（跨次状态）
+        occupied_keys = set()
+        for key_name, mapping in keyboard_service.get_all().items():
+            if mapping.function:
+                occupied_keys.add(key_name)
+
         def match_key(text: str) -> str | None:
-            """如果文本匹配某个按键标签，返回 key_name，否则返回 None"""
-            return label_to_key.get(text.strip())
+            raw = text.strip()
+            if not raw:
+                return None
+
+            # 步骤1：直接匹配
+            key = label_to_key.get(raw)
+            if key:
+                if raw in CONFUSION_ALPHA_NUM:
+                    pass  # 交给步骤3上下文裁决
+                elif raw in CONFUSION_COMPOSITE and key in occupied_keys:
+                    pass  # 自身已被占，交给步骤4转修正键
+                else:
+                    return key
+
+            # 步骤2：字形相似，汉字→字母
+            if corrected := CONFUSION_SHAPE.get(raw):
+                return label_to_key.get(corrected)
+
+            # 步骤3：数字↔字母，需上下文裁决
+            if raw.isdigit() and not prefer_letter:
+                return None
+            if corrected := CONFUSION_ALPHA_NUM.get(raw):
+                return label_to_key.get(corrected)
+
+            # 步骤4：复合键，优先绑定自身，被占后转修正键
+            if corrected := CONFUSION_COMPOSITE.get(raw):
+                self_key = label_to_key.get(raw)
+                target_key = label_to_key.get(corrected)
+                if self_key and self_key not in occupied_keys:
+                    return self_key
+                if target_key and target_key not in occupied_keys:
+                    return target_key
+
+            return None
 
         # 按 y 排序
         sorted_results = sorted(ocr_results, key=lambda r: r.y)

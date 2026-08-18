@@ -130,7 +130,8 @@ def main():
 
     setup_env()
     from paddleocr import PaddleOCR
-    PaddleOCR(use_angle_cls=False, lang="ch", show_log=False)
+    from backend.config import OCR_LANG
+    PaddleOCR(use_angle_cls=False, lang=OCR_LANG, show_log=False)
 
     if args.image:
         image_path = Path(args.image)

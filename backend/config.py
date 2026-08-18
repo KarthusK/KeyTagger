@@ -12,6 +12,28 @@ UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
 # 前端构建产物目录
 FRONTEND_DIST = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist")
 
+# OCR 混淆映射表（字形相似 → 目标键标签）
+CONFUSION_SHAPE = {
+    "口": "D",
+    "囗": "D",
+    "回": "D",
+}
+
+# OCR 数字↔字母混淆映射表（需上下文裁决）
+CONFUSION_ALPHA_NUM = {
+    "5": "S",
+    "0": "O",
+}
+
+# OCR 复合键混淆映射表（文本本身是合法键，但可能指代其他键）
+CONFUSION_COMPOSITE = {
+    "B": "F3",
+}
+
+# OCR 识别参数
+OCR_CONFIDENCE_THRESHOLD = 0.5
+OCR_LANG = "ch"
+
 # 标准 QWERTY 键盘布局定义
 # 每行按键从左到右排列，位置用 (row, col) 表示
 QWERTY_LAYOUT = {

@@ -129,7 +129,8 @@ def check_paddleocr_models() -> None:
     sys.path.insert(0, str(ROOT))
     try:
         from paddleocr import PaddleOCR
-        PaddleOCR(use_textline_orientation=False, lang="ch", show_log=False)
+        from backend.config import OCR_LANG
+        PaddleOCR(use_textline_orientation=False, lang=OCR_LANG, show_log=False)
         log("PaddleOCR 模型就绪", Colors.GREEN)
     except Exception as e:
         log(f"PaddleOCR 模型下载失败: {e}", Colors.RED)
