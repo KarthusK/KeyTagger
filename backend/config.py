@@ -15,6 +15,20 @@ FRONTEND_DIST = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fronte
 # 标准 QWERTY 键盘布局定义
 # 每行按键从左到右排列，位置用 (row, col) 表示
 QWERTY_LAYOUT = {
+    # F 功能区
+    "Escape": {"row": -1, "col": 0,  "label": "Esc"},
+    "F1":     {"row": -1, "col": 2,  "label": "F1"},
+    "F2":     {"row": -1, "col": 3,  "label": "F2"},
+    "F3":     {"row": -1, "col": 4,  "label": "F3"},
+    "F4":     {"row": -1, "col": 5,  "label": "F4"},
+    "F5":     {"row": -1, "col": 6,  "label": "F5"},
+    "F6":     {"row": -1, "col": 7,  "label": "F6"},
+    "F7":     {"row": -1, "col": 8,  "label": "F7"},
+    "F8":     {"row": -1, "col": 9,  "label": "F8"},
+    "F9":     {"row": -1, "col": 10, "label": "F9"},
+    "F10":    {"row": -1, "col": 11, "label": "F10"},
+    "F11":    {"row": -1, "col": 12, "label": "F11"},
+    "F12":    {"row": -1, "col": 13, "label": "F12"},
     # 第一行
     "Backquote":  {"row": 0, "col": 0,  "label": "`"},
     "Digit1":     {"row": 0, "col": 1,  "label": "1"},
