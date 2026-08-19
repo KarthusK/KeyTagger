@@ -12,7 +12,7 @@ body {
 }
 
 .app {
-  max-width: 960px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
 }
@@ -216,12 +216,12 @@ body {
 
 /* 自定义键盘样式 */
 .simple-keyboard {
-  max-width: 800px;
+  max-width: 1150px;
   margin: 0 auto;
 }
 
-.simple-keyboard .hg-button {
-  height: 52px;
+.simple-keyboard .hg-button.hg-button {
+  height: 53px;
   font-size: 12px;
   display: flex;
   flex-direction: column;
