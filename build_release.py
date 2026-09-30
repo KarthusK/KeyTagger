@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-KeyTagger 一键打包脚本（仅 Windows）
+KeyTagger 发布打包脚本（仅 Windows）
 
-流程：确保 PyInstaller → 构建前端 → PyInstaller 打包（KeyTagger.spec）→ 压缩为 zip
-产物：dist/KeyTagger/ 目录 与 根目录下 KeyTagger-windows-x64.zip
+一次产出两个发布包：
+- 完整版 dist/KeyTagger/ → KeyTagger-windows-x64.zip（自带运行环境，解压双击即用）
+- 精简版 KeyTagger-lite.zip（源码 + 前端构建产物，用户自备 Python，依赖自动安装）
 
-用法：python build_exe.py
+用法：python build_release.py
 """
 
 from __future__ import annotations
@@ -21,11 +22,26 @@ FRONTEND_DIR = ROOT / "frontend"
 DIST_HTML = FRONTEND_DIR / "dist" / "index.html"
 SPEC = ROOT / "KeyTagger.spec"
 APP_DIR = ROOT / "dist" / "KeyTagger"
-ZIP_PATH = ROOT / "KeyTagger-windows-x64.zip"
+FULL_ZIP = ROOT / "KeyTagger-windows-x64.zip"
+LITE_ZIP = ROOT / "KeyTagger-lite.zip"
+
+# 精简版包含的根目录文件：（来源，压缩包内路径）
+LITE_FILES = [
+    (ROOT / "start.py", "start.py"),
+    (ROOT / "run_app.py", "run_app.py"),
+    (ROOT / "requirements.txt", "requirements.txt"),
+    (ROOT / "启动.bat", "启动.bat"),
+    (ROOT / "README.md", "README.md"),
+    (ROOT / "LICENSE", "LICENSE"),
+]
 
 
 def log(msg: str) -> None:
     print(f"[build] {msg}", flush=True)
+
+
+def size_mb(path: Path) -> str:
+    return f"{path.stat().st_size / 1024 / 1024:.1f} MB"
 
 
 def ensure_pyinstaller() -> bool:
@@ -58,15 +74,48 @@ def build_frontend() -> bool:
     return True
 
 
-def make_zip() -> None:
-    """压缩 dist/KeyTagger 为 zip（解压后得到 KeyTagger 文件夹）"""
-    if ZIP_PATH.exists():
-        ZIP_PATH.unlink()
-    log(f"压缩 {APP_DIR.name}/ → {ZIP_PATH.name} ...")
-    with zipfile.ZipFile(ZIP_PATH, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
-        for f in sorted(APP_DIR.rglob("*")):
+def make_zip_from_dir(src_dir: Path, zip_path: Path) -> None:
+    """压缩目录为 zip（解压后得到以目录名命名的文件夹）"""
+    if zip_path.exists():
+        zip_path.unlink()
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
+        for f in sorted(src_dir.rglob("*")):
             if f.is_file():
-                zf.write(f, f.relative_to(APP_DIR.parent))
+                zf.write(f, f.relative_to(src_dir.parent))
+
+
+def build_full() -> bool:
+    """完整版：PyInstaller 打包（自带运行环境）"""
+    log("运行 PyInstaller（完整版，需要几分钟）...")
+    result = subprocess.run(
+        [sys.executable, "-m", "PyInstaller", str(SPEC), "--noconfirm", "--clean"],
+        cwd=ROOT,
+    )
+    if result.returncode != 0:
+        log("完整版打包失败，请检查上方 PyInstaller 输出")
+        return False
+    make_zip_from_dir(APP_DIR, FULL_ZIP)
+    return True
+
+
+def build_lite() -> None:
+    """精简版：源码 + 前端构建产物，不含运行环境"""
+    if LITE_ZIP.exists():
+        LITE_ZIP.unlink()
+    log(f"压缩精简版 → {LITE_ZIP.name} ...")
+    with zipfile.ZipFile(LITE_ZIP, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
+        for src, arc in LITE_FILES:
+            if src.exists():
+                zf.write(src, f"KeyTagger/{arc}")
+            else:
+                log(f"[WARN] 缺少 {src.name}，已跳过")
+        # 后端源码（仅 .py，天然排除 __pycache__ 与 uploads）
+        for f in sorted((ROOT / "backend").rglob("*.py")):
+            zf.write(f, f"KeyTagger/{f.relative_to(ROOT)}")
+        # 前端构建产物（免 Node 环境）
+        for f in sorted((FRONTEND_DIR / "dist").rglob("*")):
+            if f.is_file():
+                zf.write(f, f"KeyTagger/{f.relative_to(ROOT)}")
 
 
 def main() -> None:
@@ -76,19 +125,12 @@ def main() -> None:
     if not ensure_pyinstaller() or not build_frontend():
         sys.exit(1)
 
-    log("运行 PyInstaller（需要几分钟）...")
-    result = subprocess.run(
-        [sys.executable, "-m", "PyInstaller", str(SPEC), "--noconfirm", "--clean"],
-        cwd=ROOT,
-    )
-    if result.returncode != 0:
-        log("打包失败，请检查上方 PyInstaller 输出")
+    if not build_full():
         sys.exit(1)
+    build_lite()
 
-    make_zip()
-    size_mb = ZIP_PATH.stat().st_size / 1024 / 1024
-    log(f"完成：{ZIP_PATH.name}（{size_mb:.0f} MB）")
-    log(f"应用目录：{APP_DIR}")
+    log(f"完成：{FULL_ZIP.name}（{size_mb(FULL_ZIP)}，自带运行环境）")
+    log(f"      {LITE_ZIP.name}（{size_mb(LITE_ZIP)}，自备 Python）")
 
 
 if __name__ == "__main__":

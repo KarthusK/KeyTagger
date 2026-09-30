@@ -17,6 +17,7 @@ backend/uploads/
 
 # 打包产物
 KeyTagger-windows-x64.zip
+KeyTagger-lite.zip
 
 # 启动日志（重定向输出时产生）
 start_*.log

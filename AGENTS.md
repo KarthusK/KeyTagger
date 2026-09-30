@@ -10,7 +10,8 @@ python start.py --dev    # 开发模式：后端:8000 + Vite:3000 热更新
 python run_app.py        # 服务启动器（唯一入口，exe 打包入口）：端口预检 + OCR 预热 + 自动开浏览器
 python run_app.py --no-browser  # 手动只起后端，不自动开浏览器
 python test_ocr_mapping.py  # OCR 映射回归测试（扫描 test_data/ 的 png+json 用例）
-python build_exe.py      # 一键打包：PyInstaller → dist/KeyTagger/ + KeyTagger-windows-x64.zip
+python build_release.py  # 一键发布打包：完整版（PyInstaller → dist/KeyTagger/ + zip）+ 精简版（源码 zip）
+启动.bat                 # 精简版用户入口（双击）：检测本地环境或自动建 venv 装依赖后启动
 cd frontend && npm run build  # 构建前端 → frontend/dist（后端据此托管）
 cd frontend && npm run dev    # Vite 开发服务器（端口 3000，代理 /api → :8000）
 ```
@@ -26,6 +27,7 @@ cd frontend && npm run dev    # Vite 开发服务器（端口 3000，代理 /api
 - **Windows MIME 修复勿删**：`backend/app.py` 的 `MimeFixedStaticFiles` 把 `.js` 强制为 `application/javascript`。Windows 注册表把 `.js` 标为 `text/plain`，若还原为普通 `StaticFiles`，页面会因严格 MIME 检查白屏。
 - **静态挂载必须在 API 路由之后**：`app.mount("/", ...)` 若在 `/api/*` 前注册会拦截 API 请求。
 - **`requirements.txt` 保持纯 ASCII**：写入中文注释会让 Windows 下 `pip` 以 GBK 解码报错（曾踩过）。
+- **依赖用 `>=` 最低版本而非 `==` 锁死**：工具可能装进用户共享环境，锁死会强行降级已有包；下限取已测试版本，完整版 exe 打包时自带的就是已测试组合。其中 **rapidocr 必须 ≥1.4**（`ocr_service.py` 依赖 1.4 的 `det_limit_*` 参数与 `[[box, text, score]]` 输出格式），`启动.bat` 的本地环境快速通道对该包做版本断言，不通过则走 venv 兜底。
 - **PyInstaller 打包**：spec 里必须 `collect_all("rapidocr_onnxruntime")`（带走内置模型）并显式声明 uvicorn 的动态导入组件（见 `KeyTagger.spec`）；打包前需先构建前端。杀软对 PyInstaller exe 误报属常见现象。
 
 ## 架构要点

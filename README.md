@@ -26,18 +26,34 @@ KeyTagger 是一款轻量级开源工具：上传一张游戏键位设置界面�
 
 ## 快速开始
 
-### 免安装版（推荐普通用户）
+### 版本选择
 
-无需安装 Python 和 Node.js：
+| 版本 | 体积 | 环境要求 | 适合人群 |
+| ---- | ---- | -------- | -------- |
+| 完整版 `KeyTagger-windows-x64.zip` | ~117MB | 无 | 没装 Python 的普通用户 |
+| 精简版 `KeyTagger-lite.zip` | ~2MB | Python 3.10+ | 已装 Python、想快速下载的用户 |
 
-1. 下载 `KeyTagger-windows-x64.zip`（Release 附件，或自行打包，见下文）
-2. 解压到任意文件夹
-3. 双击 `KeyTagger.exe`，浏览器会自动打开 `http://127.0.0.1:8000`
-4. 使用完毕后关闭命令行窗口即可退出
+### 完整版（免安装）
+
+1. 下载并解压 `KeyTagger-windows-x64.zip`
+2. 双击 `KeyTagger.exe`，浏览器会自动打开 `http://127.0.0.1:8000`
+3. 使用完毕后关闭命令行窗口即可退出
 
 > - 导出的 JSON 与运行数据保存在 exe 同级的 `uploads/` 文件夹
 > - 个别杀毒软件可能对未签名的打包程序误报，添加信任即可
 > - 服务固定使用 8000 端口，被占用时请先关闭占用该端口的程序
+
+### 精简版（自备 Python）
+
+1. 下载并解压 `KeyTagger-lite.zip`
+2. 双击 `启动.bat`：本地已有依赖则直接启动；否则自动创建虚拟环境并通过国内镜像安装依赖（首次约 1-2 分钟），完成后自动打开浏览器
+
+也可以手动执行（等价）：
+
+```bash
+pip install -r requirements.txt
+python start.py
+```
 
 ### 一键启动（源码运行）
 
@@ -125,8 +141,9 @@ KeyTagger/
 │   ├── package.json
 │   └── vite.config.js          # 开发代理：/api → localhost:8000
 ├── start.py                    # 一键启动脚本（自动检查依赖并构建）
-├── run_app.py                  # 应用入口：启动服务 + 自动开浏览器（exe 打包入口）
-├── build_exe.py                # 一键打包脚本：PyInstaller → dist/KeyTagger + zip
+├── run_app.py                  # 服务启动器：端口预检 + 自动开浏览器（exe 打包入口）
+├── 启动.bat                    # 精简版用户入口：自动建 venv 装依赖并启动
+├── build_release.py            # 发布打包：完整版（PyInstaller）+ 精简版（源码 zip）
 ├── KeyTagger.spec              # PyInstaller 打包配置
 ├── test_ocr_mapping.py         # OCR 识别与映射回归测试
 ├── test_data/                  # 测试截图与期望映射（png + json 成对）
@@ -164,15 +181,19 @@ A: 识别精度与截图质量相关，建议使用高清截图。识别结果�
 
 A: 源码运行时可修改 `backend/config.py` 中的 `PORT` 配置更换端口；免安装版固定使用 8000 端口，请先关闭占用该端口的程序。
 
-## 打包免安装版（开发者）
+## 打包发布（开发者）
 
 在装有 Python 与 Node.js 的机器上执行：
 
 ```bash
-python build_exe.py
+python build_release.py
 ```
 
-脚本会自动安装 PyInstaller → 构建前端 → 打包 → 压缩，产物为 `dist/KeyTagger/` 目录和 `KeyTagger-windows-x64.zip`（约 117 MB）。打包配置见 `KeyTagger.spec`（需携带 RapidOCR 内置模型与前端构建产物）。
+一次产出两个发布包：
+- **完整版**：PyInstaller 打包 → `dist/KeyTagger/` 目录和 `KeyTagger-windows-x64.zip`（约 117MB，自带运行环境）
+- **精简版**：`KeyTagger-lite.zip`（约 2MB，源码 + 前端构建产物，用户自备 Python）
+
+打包配置见 `KeyTagger.spec`（需携带 RapidOCR 内置模型与前端构建产物）。
 
 ## 开源协议
 
