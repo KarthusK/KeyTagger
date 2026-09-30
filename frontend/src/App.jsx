@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useKeymap } from './store/keymapContext'
 import KeymapKeyboard from './components/Keyboard'
-import { UploadIcon, SunIcon, MoonIcon } from './components/icons'
+import { UploadIcon, SunIcon, MoonIcon, JsonIcon } from './components/icons'
 
 function useTheme() {
   const [theme, setTheme] = useState(() => localStorage.getItem('kt-theme') === 'dark' ? 'dark' : 'light')
@@ -13,14 +13,16 @@ function useTheme() {
 }
 
 export default function App() {
-  const { keymap, loading, error, upload, export: exportKeymap, reset } = useKeymap()
+  const { keymap, loading, error, upload, importKeymap, export: exportKeymap, reset } = useKeymap()
   const [theme, toggleTheme] = useTheme()
   const fileInputRef = useRef(null)
   const resetTimerRef = useRef(null)
   const dragDepthRef = useRef(0)
   const objectUrlsRef = useRef([])
+  const recordIdRef = useRef(0)
   const [dragActive, setDragActive] = useState(false)
-  const [uploads, setUploads] = useState([]) // 本次会话上传过的截图，最新在前
+  const [importing, setImporting] = useState(false) // 当前是否在处理 JSON 导入（决定加载文案）
+  const [uploads, setUploads] = useState([]) // 本次会话上传过的截图 / 导入过的 JSON，最新在前
   const [previewUrl, setPreviewUrl] = useState(null) // lightbox 当前展示的图
   const [confirmingReset, setConfirmingReset] = useState(false)
 
@@ -34,12 +36,21 @@ export default function App() {
 
   const handleFile = async (file) => {
     if (!file || loading) return
-    // 等识别完成再入列，失败时不进对照区（错误横幅已提示）
-    const count = await upload(file)
+    const isJson = file.type === 'application/json' ||
+      (file.name && file.name.toLowerCase().endsWith('.json'))
+    setImporting(isJson)
+    // 等处理完成再入列，失败时不进记录区（错误横幅已提示）
+    const count = isJson ? await importKeymap(file) : await upload(file)
+    setImporting(false)
     if (count === null) return
-    const url = URL.createObjectURL(file)
-    objectUrlsRef.current.push(url)
-    setUploads((prev) => [{ name: file.name, url, count }, ...prev])
+    const id = ++recordIdRef.current
+    if (isJson) {
+      setUploads((prev) => [{ id, name: file.name, kind: 'json', count }, ...prev])
+    } else {
+      const url = URL.createObjectURL(file)
+      objectUrlsRef.current.push(url)
+      setUploads((prev) => [{ id, name: file.name, url, kind: 'image', count }, ...prev])
+    }
   }
 
   // 全窗口拖拽上传：文件拖到页面任意位置松手即可，拖拽期间顶部上传区高亮
@@ -80,7 +91,7 @@ export default function App() {
       window.removeEventListener('dragleave', onDragLeave)
       window.removeEventListener('drop', onDrop)
     }
-  }, [loading, upload])
+  }, [loading, upload, importKeymap])
 
   useEffect(() => {
     if (!previewUrl) return
@@ -104,7 +115,7 @@ export default function App() {
     <input
       ref={fileInputRef}
       type="file"
-      accept="image/png,image/jpeg,image/jpg,image/webp,image/bmp"
+      accept="image/png,image/jpeg,image/jpg,image/webp,image/bmp,.json,application/json"
       onChange={(e) => handleFile(e.target.files[0])}
       hidden
     />
@@ -138,15 +149,16 @@ export default function App() {
             {loading ? (
               <>
                 <div className="spinner" />
-                <span className="upload-text">正在识别中...</span>
+                <span className="upload-text">{importing ? '正在导入中...' : '正在识别中...'}</span>
               </>
             ) : (
               <>
                 <span className="upload-icon-sm">
                   <UploadIcon size={20} />
                 </span>
-                <span className="upload-text">点击或拖拽截图到此处上传</span>
-                <span className="upload-hint">PNG / JPG / WebP / BMP · 可拖到页面任意位置 · 仅在本地处理</span>
+                <span className="upload-text">点击或拖拽截图或键位文件到此处上传</span>
+                <span className="upload-hint">PNG / JPG / WebP / BMP 截图 · .json 键位文件 · 可在页面任意位置拖放</span>
+                <span className="upload-hint">导入 JSON 会覆盖对应的键位（其余保持不变） · 仅在本地处理</span>
               </>
             )}
           </div>
@@ -177,21 +189,29 @@ export default function App() {
         {uploads.length > 0 && (
           <section className="shots-section">
             <div className="section-header">
-              <h2>截图对照</h2>
-              <span className="key-count">点击条目查看原图</span>
+              <h2>导入记录</h2>
+              <span className="key-count">点击截图可查看原图</span>
             </div>
             <div className="shots-list">
               {uploads.map((item) => (
                 <div
-                  key={item.url}
+                  key={item.id}
                   className="shot-row"
-                  onClick={() => setPreviewUrl(item.url)}
-                  title="点击查看原图"
+                  onClick={() => item.kind === 'image' && setPreviewUrl(item.url)}
+                  title={item.kind === 'image' ? '点击查看原图' : 'JSON 键位文件'}
                 >
-                  <img src={item.url} className="shot-thumb" alt={item.name} />
+                  {item.kind === 'json' ? (
+                    <span className="shot-thumb shot-thumb-json">
+                      <JsonIcon size={24} />
+                    </span>
+                  ) : (
+                    <img src={item.url} className="shot-thumb" alt={item.name} />
+                  )}
                   <span className="shot-name">{item.name}</span>
                   <span className="shot-count">
-                    已识别 <b>{item.count}</b> 个按键
+                    {item.kind === 'json'
+                      ? <>已导入 <b>{item.count}</b> 个按键</>
+                      : <>已识别 <b>{item.count}</b> 个按键</>}
                   </span>
                 </div>
               ))}

@@ -14,6 +14,15 @@ export async function uploadImage(file) {
   return res.data
 }
 
+export async function importKeymap(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await api.post('/import', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return res.data
+}
+
 export async function getKeymap() {
   const res = await api.get('/keymap')
   return res.data

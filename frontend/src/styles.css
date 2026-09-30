@@ -325,6 +325,15 @@ body {
   background: var(--key-bg);
 }
 
+/* JSON 键位文件条目的缩略占位（无原图可预览） */
+.shot-thumb-json {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  cursor: default;
+}
+
 .shot-name {
   flex: 1;
   min-width: 0;

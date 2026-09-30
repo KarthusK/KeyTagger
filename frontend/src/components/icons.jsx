@@ -32,3 +32,14 @@ export function MoonIcon({ size = 17 }) {
     </svg>
   )
 }
+
+export function JsonIcon({ size = 22 }) {
+  // 文件轮廓 + { } 花括号，表示键位 JSON 文件
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...stroke}>
+      <path d="M7 3h7.5L19 7.5V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" />
+      <path d="M14.5 3v4.5H19" />
+      <path d="M10.4 10.3 8.4 12l2 1.7M13.6 10.3 15.6 12l-2 1.7" />
+    </svg>
+  )
+}

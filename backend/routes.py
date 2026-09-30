@@ -86,6 +86,33 @@ async def export_keymap():
     )
 
 
+@router.post("/import")
+async def import_keymap(file: UploadFile = File(...)):
+    """导入导出的 JSON 键位文件：覆盖式导入，仅更新 JSON 中出现的按键，已有键位保留"""
+    filename = (file.filename or "").lower()
+    if not filename.endswith(".json") and "json" not in (file.content_type or "").lower():
+        raise HTTPException(400, "请上传 JSON 键位文件（.json）")
+
+    content = await file.read()
+    if len(content) > MAX_UPLOAD_SIZE:
+        raise HTTPException(400, f"文件过大，最大支持 {MAX_UPLOAD_SIZE // 1024 // 1024}MB")
+
+    try:
+        data = json.loads(content.decode("utf-8-sig"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as e:
+        raise HTTPException(400, f"JSON 解析失败：{str(e)}，请使用本工具“导出 JSON”生成的文件")
+
+    if not isinstance(data, dict):
+        raise HTTPException(400, "JSON 内容必须是键值对对象，形如 {\"KeyW\": \"前进\"}")
+
+    applied = {k for k in data if k in keyboard_service.get_all()}
+    if data and not applied:
+        raise HTTPException(400, "JSON 中未找到有效的按键名，请使用本工具“导出 JSON”生成的文件")
+
+    count = keyboard_service.import_dict(data)
+    return {"success": True, "keymap": _serialize_keymap(), "imported_count": count}
+
+
 @router.post("/reset")
 async def reset_keymap():
     """重置所有按键映射"""

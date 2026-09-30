@@ -55,6 +55,29 @@ class KeyboardService:
         for key_name in self._mappings:
             self._mappings[key_name].function = ""
 
+    def import_dict(self, data: Dict) -> int:
+        """从导出的 JSON 字典覆盖式导入：仅写入 JSON 中出现的有效按键，其余保持不变，返回实际导入的按键数
+
+        兼容两种值形态：
+        - 字符串：导出的简洁格式 {"KeyW": "前进"}
+        - 对象：完整序列化格式 {"KeyW": {"key_name": ..., "label": ..., "function": ...}}
+        未知的 key_name 直接跳过；值为空字符串（或对象 function 为空）表示解绑该键。
+        """
+        count = 0
+        for key_name, value in data.items():
+            if key_name not in self._mappings:
+                continue
+            if isinstance(value, str):
+                function = value
+            elif isinstance(value, dict):
+                function = value.get("function", "")
+            else:
+                continue
+            self._mappings[key_name].function = function
+            if function:
+                count += 1
+        return count
+
     def to_export_dict(self) -> Dict[str, str]:
         """导出为简洁的键值对字典"""
         result = {}

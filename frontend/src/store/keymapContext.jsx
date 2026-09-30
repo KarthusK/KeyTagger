@@ -35,6 +35,25 @@ export function KeymapProvider({ children }) {
     }
   }, [])
 
+  const handleImport = useCallback(async (file) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await api.importKeymap(file)
+      if (data.success) {
+        setKeymap(data.keymap)
+        // 返回本次导入的按键数；失败时返回 null 由调用方区分
+        return data.imported_count ?? 0
+      }
+      return null
+    } catch (e) {
+      setError(e.response?.data?.detail || '导入失败，请检查 JSON 文件格式')
+      return null
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   const handleUpdateKey = useCallback(async (keyName, functionName) => {
     setError(null)
     try {
@@ -89,6 +108,7 @@ export function KeymapProvider({ children }) {
     <KeymapContext.Provider value={{
       keymap, loading, error,
       upload: handleUpload,
+      importKeymap: handleImport,
       updateKey: handleUpdateKey,
       moveKey: handleMoveKey,
       export: handleExport,
