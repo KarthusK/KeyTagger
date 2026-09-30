@@ -38,15 +38,11 @@ const KEY_MAP = {
   '{altl}': 'AltLeft', '{altr}': 'AltRight', '{space}': 'Space',
 }
 
-const MAX_FN_PER_LINE = 4
-const NO_WRAP_KEYS = new Set(['ControlLeft', 'AltLeft', 'Space', 'AltRight', 'ControlRight'])
-
-function wrapFnText(text) {
-  const parts = []
-  for (let i = 0; i < text.length; i += MAX_FN_PER_LINE) {
-    parts.push(text.slice(i, i + MAX_FN_PER_LINE))
-  }
-  return parts.join('<br>')
+// 功能文本经 innerHTML 注入按钮，先转义防止 OCR/用户输入中的特殊字符破坏结构
+function escapeHtml(text) {
+  return text.replace(/[&<>"']/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ))
 }
 
 export default function KeymapKeyboard() {
@@ -65,9 +61,12 @@ export default function KeymapKeyboard() {
     Object.entries(KEY_MAP).forEach(([button, keyName]) => {
       const elements = kb.getButtonElement(button)
       const list = Array.isArray(elements) ? elements : [elements]
-      const draggable = Boolean(keymap[keyName]?.function)
+      const fn = keymap[keyName]?.function || ''
       list.forEach((el) => {
-        if (el) el.draggable = draggable
+        if (el) {
+          el.draggable = Boolean(fn)
+          el.title = fn
+        }
       })
     })
   }, [keymap])
@@ -77,10 +76,8 @@ export default function KeymapKeyboard() {
     for (const [layoutKey, keyName] of Object.entries(KEY_MAP)) {
       const mapping = keymap[keyName]
       if (mapping?.function) {
-        const noWrap = NO_WRAP_KEYS.has(keyName)
-        const fnClass = noWrap ? 'hg-key-fn hg-key-fn-nowrap' : 'hg-key-fn'
-        const fnText = noWrap ? mapping.function : wrapFnText(mapping.function)
-        d[layoutKey] = `<span class="hg-key-label">${mapping.label}</span><span class="${fnClass}"><span class="hg-key-fn-text">${fnText}</span></span>`
+        // 功能名为主内容（CSS 限 2 行截断，全文见按钮 title），原键帽标签缩为右下角标
+        d[layoutKey] = `<span class="hg-key-fn">${escapeHtml(mapping.function)}</span><span class="hg-key-tag">${mapping.label}</span>`
       } else {
         d[layoutKey] = mapping?.label || keyName
       }
@@ -127,6 +124,15 @@ export default function KeymapKeyboard() {
     setEditingKey(null)
     setEditValue('')
   }, [])
+
+  const handleUnbind = useCallback(() => {
+    if (editingKey) {
+      updateKey(editingKey, '')
+    }
+    pendingEditRef.current = null
+    setEditingKey(null)
+    setEditValue('')
+  }, [editingKey, updateKey])
 
   const clearDragHighlights = useCallback(() => {
     if (dropTargetRef.current) {
@@ -210,7 +216,10 @@ export default function KeymapKeyboard() {
       {editingKey && (
         <div className="edit-overlay" onClick={handleCancel}>
           <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>编辑按键：{keymap[editingKey]?.label || editingKey}</h3>
+            <h3>
+              编辑按键
+              <span className="edit-key-badge">{keymap[editingKey]?.label || editingKey}</span>
+            </h3>
             <p className="edit-hint">输入该按键对应的游戏功能名称</p>
             <input
               type="text"
@@ -221,8 +230,13 @@ export default function KeymapKeyboard() {
               autoFocus
             />
             <div className="edit-actions">
-              <button className="btn btn-secondary" onClick={handleCancel}>取消</button>
-              <button className="btn btn-primary" onClick={handleSave}>保存</button>
+              {keymap[editingKey]?.function && (
+                <button className="btn btn-danger-ghost" onClick={handleUnbind}>解除绑定</button>
+              )}
+              <div className="edit-actions-right">
+                <button className="btn btn-secondary" onClick={handleCancel}>取消</button>
+                <button className="btn btn-primary" onClick={handleSave}>保存</button>
+              </div>
             </div>
           </div>
         </div>

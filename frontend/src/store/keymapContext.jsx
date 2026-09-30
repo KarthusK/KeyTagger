@@ -23,9 +23,13 @@ export function KeymapProvider({ children }) {
       const data = await api.uploadImage(file)
       if (data.success) {
         setKeymap(data.keymap)
+        // 返回本次截图识别出的键位数；失败时返回 null 由调用方区分
+        return data.mapped_count ?? 0
       }
+      return null
     } catch (e) {
       setError(e.response?.data?.detail || '上传或识别失败，请重试')
+      return null
     } finally {
       setLoading(false)
     }

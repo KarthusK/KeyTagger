@@ -1,65 +1,154 @@
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useKeymap } from './store/keymapContext'
 import KeymapKeyboard from './components/Keyboard'
+import { UploadIcon, SunIcon, MoonIcon } from './components/icons'
+
+function useTheme() {
+  const [theme, setTheme] = useState(() => localStorage.getItem('kt-theme') === 'dark' ? 'dark' : 'light')
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : ''
+    localStorage.setItem('kt-theme', theme)
+  }, [theme])
+  return [theme, () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))]
+}
 
 export default function App() {
   const { keymap, loading, error, upload, export: exportKeymap, reset } = useKeymap()
+  const [theme, toggleTheme] = useTheme()
   const fileInputRef = useRef(null)
-  const [dragOver, setDragOver] = useState(false)
-  const [fileName, setFileName] = useState('')
+  const resetTimerRef = useRef(null)
+  const dragDepthRef = useRef(0)
+  const objectUrlsRef = useRef([])
+  const [dragActive, setDragActive] = useState(false)
+  const [uploads, setUploads] = useState([]) // 本次会话上传过的截图，最新在前
+  const [previewUrl, setPreviewUrl] = useState(null) // lightbox 当前展示的图
+  const [confirmingReset, setConfirmingReset] = useState(false)
 
   const keyCount = Object.values(keymap).filter((m) => m.function).length
 
-  const handleFile = (file) => {
-    if (!file) return
-    setFileName(file.name)
-    upload(file)
+  // 卸载时统一释放 objectURL
+  useEffect(() => () => {
+    clearTimeout(resetTimerRef.current)
+    objectUrlsRef.current.forEach((u) => URL.revokeObjectURL(u))
+  }, [])
+
+  const handleFile = async (file) => {
+    if (!file || loading) return
+    // 等识别完成再入列，失败时不进对照区（错误横幅已提示）
+    const count = await upload(file)
+    if (count === null) return
+    const url = URL.createObjectURL(file)
+    objectUrlsRef.current.push(url)
+    setUploads((prev) => [{ name: file.name, url, count }, ...prev])
   }
 
-  const handleDrop = (e) => {
-    e.preventDefault()
-    setDragOver(false)
-    const file = e.dataTransfer.files[0]
-    handleFile(file)
+  // 全窗口拖拽上传：文件拖到页面任意位置松手即可，拖拽期间顶部上传区高亮
+  useEffect(() => {
+    const hasFiles = (e) => Array.from(e.dataTransfer?.types || []).includes('Files')
+    const onDragEnter = (e) => {
+      e.preventDefault()
+      if (hasFiles(e)) {
+        dragDepthRef.current += 1
+        setDragActive(true)
+      }
+    }
+    const onDragOver = (e) => {
+      e.preventDefault()
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
+    }
+    const onDragLeave = (e) => {
+      e.preventDefault()
+      dragDepthRef.current -= 1
+      if (dragDepthRef.current <= 0) {
+        dragDepthRef.current = 0
+        setDragActive(false)
+      }
+    }
+    const onDrop = (e) => {
+      e.preventDefault()
+      dragDepthRef.current = 0
+      setDragActive(false)
+      handleFile(e.dataTransfer?.files?.[0])
+    }
+    window.addEventListener('dragenter', onDragEnter)
+    window.addEventListener('dragover', onDragOver)
+    window.addEventListener('dragleave', onDragLeave)
+    window.addEventListener('drop', onDrop)
+    return () => {
+      window.removeEventListener('dragenter', onDragEnter)
+      window.removeEventListener('dragover', onDragOver)
+      window.removeEventListener('dragleave', onDragLeave)
+      window.removeEventListener('drop', onDrop)
+    }
+  }, [loading, upload])
+
+  useEffect(() => {
+    if (!previewUrl) return
+    const onKey = (e) => e.key === 'Escape' && setPreviewUrl(null)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [previewUrl])
+
+  const handleResetClick = () => {
+    if (!confirmingReset) {
+      setConfirmingReset(true)
+      resetTimerRef.current = setTimeout(() => setConfirmingReset(false), 3000)
+      return
+    }
+    clearTimeout(resetTimerRef.current)
+    setConfirmingReset(false)
+    reset()
   }
 
-  const handleDragOver = (e) => {
-    e.preventDefault()
-    setDragOver(true)
-  }
-
-  const handleDragLeave = () => setDragOver(false)
+  const fileInput = (
+    <input
+      ref={fileInputRef}
+      type="file"
+      accept="image/png,image/jpeg,image/jpg,image/webp,image/bmp"
+      onChange={(e) => handleFile(e.target.files[0])}
+      hidden
+    />
+  )
 
   return (
     <div className="app">
       <header className="header">
-        <h1>KeyTagger</h1>
-        <p className="subtitle">游戏键位可视化编辑工具 — 上传截图，自动识别，一键导出</p>
+        <div>
+          <h1>
+            Key<span className="accent">Tagger</span>
+          </h1>
+          <p className="subtitle">上传游戏键位截图，自动识别并可视化编辑</p>
+        </div>
+        <button
+          className="icon-btn"
+          onClick={toggleTheme}
+          title={theme === 'dark' ? '切换到浅色' : '切换到暗色'}
+        >
+          {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+        </button>
       </header>
 
       <main className="main">
         <section className="upload-section">
+          {fileInput}
           <div
-            className={`upload-zone ${dragOver ? 'drag-over' : ''}`}
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onClick={() => fileInputRef.current?.click()}
+            className={`upload-zone ${dragActive ? 'drop-active' : ''} ${loading ? 'uploading' : ''}`}
+            onClick={() => !loading && fileInputRef.current?.click()}
           >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/png,image/jpeg,image/jpg,image/webp,image/bmp"
-              onChange={(e) => handleFile(e.target.files[0])}
-              hidden
-            />
-            <div className="upload-icon">
-              {loading ? '⏳' : '📁'}
-            </div>
-            <p className="upload-text">
-              {loading ? '正在识别中...' : fileName || '点击或拖拽截图到此处上传'}
-            </p>
-            <p className="upload-hint">支持 PNG / JPG / WebP / BMP 格式</p>
+            {loading ? (
+              <>
+                <div className="spinner" />
+                <span className="upload-text">正在识别中...</span>
+              </>
+            ) : (
+              <>
+                <span className="upload-icon-sm">
+                  <UploadIcon size={20} />
+                </span>
+                <span className="upload-text">点击或拖拽截图到此处上传</span>
+                <span className="upload-hint">PNG / JPG / WebP / BMP · 可拖到页面任意位置 · 仅在本地处理</span>
+              </>
+            )}
           </div>
           {error && <div className="error-message">{error}</div>}
         </section>
@@ -69,8 +158,12 @@ export default function App() {
             <h2>键盘布局</h2>
             <div className="section-actions">
               <span className="key-count">已识别 {keyCount} 个按键</span>
-              <button className="btn btn-secondary" onClick={reset} disabled={keyCount === 0}>
-                重置
+              <button
+                className={`btn ${confirmingReset ? 'btn-reset-armed' : 'btn-secondary'}`}
+                onClick={handleResetClick}
+                disabled={keyCount === 0}
+              >
+                {confirmingReset ? '确认重置？' : '重置'}
               </button>
               <button className="btn btn-primary" onClick={exportKeymap} disabled={keyCount === 0}>
                 导出 JSON
@@ -80,7 +173,38 @@ export default function App() {
           <KeymapKeyboard />
           <p className="keyboard-hint">点击任意按键可编辑其功能名称，拖拽已绑定按键可移动到其他按键上</p>
         </section>
+
+        {uploads.length > 0 && (
+          <section className="shots-section">
+            <div className="section-header">
+              <h2>截图对照</h2>
+              <span className="key-count">点击条目查看原图</span>
+            </div>
+            <div className="shots-list">
+              {uploads.map((item) => (
+                <div
+                  key={item.url}
+                  className="shot-row"
+                  onClick={() => setPreviewUrl(item.url)}
+                  title="点击查看原图"
+                >
+                  <img src={item.url} className="shot-thumb" alt={item.name} />
+                  <span className="shot-name">{item.name}</span>
+                  <span className="shot-count">
+                    已识别 <b>{item.count}</b> 个按键
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
+
+      {previewUrl && (
+        <div className="lightbox" onClick={() => setPreviewUrl(null)}>
+          <img src={previewUrl} alt="截图预览" />
+        </div>
+      )}
     </div>
   )
 }

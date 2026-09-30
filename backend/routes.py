@@ -37,8 +37,8 @@ async def upload_image(file: UploadFile = File(...)):
         mapped = ocr_service.map_to_keys(results)
         # 更新键位状态
         keyboard_service.update_batch(mapped)
-        # 返回完整键位映射
-        return {"success": True, "keymap": _serialize_keymap()}
+        # 返回完整键位映射；mapped_count 为本次截图识别出的键位数（非全局总数）
+        return {"success": True, "keymap": _serialize_keymap(), "mapped_count": len(mapped)}
     except Exception as e:
         raise HTTPException(500, f"OCR 识别失败: {str(e)}")
     finally:
