@@ -25,7 +25,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -34,7 +33,6 @@ TEST_DATA = ROOT / "test_data"
 
 
 def setup_env():
-    os.environ.setdefault("FLAGS_use_mkldnn", "0")
     sys.path.insert(0, str(ROOT))
 
 
@@ -88,19 +86,26 @@ def run_test(image_path: Path, verbose: bool = False) -> tuple[list, dict]:
     return ocr_results, mapped
 
 
+def normalize_text(s: str) -> str:
+    """忽略空格与全角/半角括号差异，避免 OCR 标点风格影响断言"""
+    return s.replace(" ", "").replace("（", "(").replace("）", ")")
+
+
 def compare(
     ocr_results: list, mapped: dict[str, str], expected: dict[str, str]
 ) -> tuple[bool, list[str], list[str]]:
     label_to_keyname = build_label_to_keyname()
 
     # mapped 格式: {key_name: ocr_text} → 反转成 {ocr_text: key_name}
-    ocr_text_to_keyname = {v: k for k, v in mapped.items()}
+    ocr_text_to_keyname = {
+        normalize_text(v): k for k, v in mapped.items()
+    }
 
     matched = []
     mismatched = []
 
     for ocr_text, expected_label in expected.items():
-        actual_key = ocr_text_to_keyname.get(ocr_text)
+        actual_key = ocr_text_to_keyname.get(normalize_text(ocr_text))
         expected_key = label_to_keyname.get(expected_label.lower(), "")
 
         if actual_key is not None and actual_key == expected_key:
@@ -129,9 +134,9 @@ def main():
     args = parser.parse_args()
 
     setup_env()
-    from paddleocr import PaddleOCR
-    from backend.config import OCR_LANG
-    PaddleOCR(use_angle_cls=False, lang=OCR_LANG, show_log=False)
+    # 预热 OCR 模型，避免首张图片的计时包含模型加载时间
+    from rapidocr_onnxruntime import RapidOCR
+    RapidOCR()
 
     if args.image:
         image_path = Path(args.image)

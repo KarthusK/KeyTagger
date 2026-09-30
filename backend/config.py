@@ -1,4 +1,5 @@
 import os
+import sys
 
 # 服务端口
 PORT = 8000
@@ -6,11 +7,17 @@ PORT = 8000
 # 上传文件大小限制（10MB）
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024
 
-# 上传文件保存目录
-UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
-
-# 前端构建产物目录
-FRONTEND_DIST = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist")
+# 路径解析：
+# - 开发模式：以仓库根为基准（上传目录在 backend/ 下，前端产物在 frontend/dist）
+# - PyInstaller 打包后：只读资源在 sys._MEIPASS，可写数据放 exe 同级目录
+if getattr(sys, "frozen", False):
+    _RESOURCE_DIR = sys._MEIPASS
+    _WRITABLE_DIR = os.path.dirname(sys.executable)
+    UPLOAD_DIR = os.path.join(_WRITABLE_DIR, "uploads")
+    FRONTEND_DIST = os.path.join(_RESOURCE_DIR, "frontend", "dist")
+else:
+    UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
+    FRONTEND_DIST = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist")
 
 # OCR 混淆映射表（字形相似 → 目标键标签）
 CONFUSION_SHAPE = {
@@ -32,7 +39,10 @@ CONFUSION_COMPOSITE = {
 
 # OCR 识别参数
 OCR_CONFIDENCE_THRESHOLD = 0.5
-OCR_LANG = "ch"
+# 检测阶段最小边长（min 模式）：键位截图中单个字母较小，默认 736 会漏检，
+# 提高到 1216 后单字符检出率显著提升
+OCR_DET_LIMIT_SIDE_LEN = 1216
+OCR_DET_LIMIT_TYPE = "min"
 
 # 标准 QWERTY 键盘布局定义
 # 每行按键从左到右排列，位置用 (row, col) 表示

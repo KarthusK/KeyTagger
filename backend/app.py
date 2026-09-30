@@ -1,19 +1,13 @@
-import sys
+"""FastAPI 应用定义：健康检查、API 路由挂载、前端静态资源托管（含 Windows MIME 修复）"""
+
 import os
 
-os.environ.setdefault("FLAGS_use_mkldnn", "0")
-import mimetypes
-
-# 将项目根目录添加到 Python 路径，确保可以直接运行 python main.py
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-import uvicorn
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import FileResponse
 from starlette.types import Scope
 from backend.routes import router
-from backend.config import PORT, FRONTEND_DIST
+from backend.config import FRONTEND_DIST
 
 app = FastAPI(title="KeyTagger")
 
@@ -56,15 +50,3 @@ class MimeFixedStaticFiles(StaticFiles):
 # 挂载前端静态资源（需放在所有 API 路由之后，避免拦截）
 if os.path.exists(FRONTEND_DIST):
     app.mount("/", MimeFixedStaticFiles(directory=FRONTEND_DIST, html=True), name="frontend")
-
-
-def main():
-    """启动 KeyTagger 服务"""
-    print(f"  KeyTagger 服务启动中...")
-    print(f"  请在浏览器中访问: http://localhost:{PORT}")
-    print(f"  按 Ctrl+C 停止服务")
-    uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="info")
-
-
-if __name__ == "__main__":
-    main()

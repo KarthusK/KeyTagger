@@ -1,10 +1,9 @@
 import os
-os.environ["FLAGS_use_mkldnn"] = "0"
-from typing import List, Dict, Tuple
+from typing import List, Dict
 from backend.config import (
     QWERTY_LAYOUT, UPLOAD_DIR,
     CONFUSION_SHAPE, CONFUSION_ALPHA_NUM, CONFUSION_COMPOSITE,
-    OCR_CONFIDENCE_THRESHOLD, OCR_LANG,
+    OCR_CONFIDENCE_THRESHOLD, OCR_DET_LIMIT_SIDE_LEN, OCR_DET_LIMIT_TYPE,
 )
 from backend.models import OCRResult
 from backend.keyboard_service import keyboard_service
@@ -13,7 +12,7 @@ from backend.keyboard_service import keyboard_service
 class OCRService:
     """
     OCR 识别与坐标映射服务。
-    使用 PaddleOCR 识别图片中的文字及坐标，然后根据坐标智能映射到标准 QWERTY 键盘按键。
+    使用 RapidOCR（onnxruntime）识别图片中的文字及坐标，然后根据坐标智能映射到标准 QWERTY 键盘按键。
     """
 
     def __init__(self, confidence_threshold: float = OCR_CONFIDENCE_THRESHOLD):
@@ -25,13 +24,13 @@ class OCRService:
         os.makedirs(UPLOAD_DIR, exist_ok=True)
 
     def _get_ocr(self):
-        """延迟初始化 PaddleOCR"""
+        """延迟初始化 RapidOCR（PP-OCR 模型随包内置，无需额外下载）"""
         if self._ocr is None:
-            try:
-                from paddleocr import PaddleOCR
-                self._ocr = PaddleOCR(use_angle_cls=False, lang=OCR_LANG, show_log=False)
-            except ImportError:
-                raise ImportError("请先安装 PaddleOCR: pip install paddleocr")
+            from rapidocr_onnxruntime import RapidOCR
+            self._ocr = RapidOCR(
+                det_limit_side_len=OCR_DET_LIMIT_SIDE_LEN,
+                det_limit_type=OCR_DET_LIMIT_TYPE,
+            )
         return self._ocr
 
     def _preprocess(self, image_path: str) -> str:
@@ -46,14 +45,14 @@ class OCRService:
         """
         processed = self._preprocess(image_path)
         ocr = self._get_ocr()
-        results = ocr.ocr(processed, cls=False)
+        results, _ = ocr(processed)
 
         ocr_results = []
-        if results and results[0]:
-            for line in results[0]:
+        if results:
+            for line in results:
                 bbox = line[0]  # [[x1,y1], [x2,y1], [x2,y2], [x1,y2]]
-                text = line[1][0]  # 识别文本
-                confidence = line[1][1]  # 置信度
+                text = line[1]  # 识别文本
+                confidence = line[2]  # 置信度
 
                 if confidence < self.confidence_threshold:
                     continue

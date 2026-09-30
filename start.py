@@ -4,7 +4,7 @@ KeyTagger 一键启动脚本
 
 生产模式（默认）:
     python start.py
-    检查依赖 → 构建前端 → 启动后端服务 → 显示项目地址
+    检查依赖 → 构建前端 → 启动服务（自动打开浏览器）
 
 开发模式（热更新）:
     python start.py --dev
@@ -12,9 +12,6 @@ KeyTagger 一键启动脚本
 """
 
 from __future__ import annotations
-
-import os
-os.environ.setdefault("FLAGS_use_mkldnn", "0")
 
 import argparse
 import importlib.util
@@ -26,7 +23,6 @@ from pathlib import Path
 
 # 项目根目录（start.py 所在目录）
 ROOT = Path(__file__).resolve().parent
-BACKEND_DIR = ROOT / "backend"
 FRONTEND_DIR = ROOT / "frontend"
 DIST_HTML = FRONTEND_DIR / "dist" / "index.html"
 REQUIREMENTS = ROOT / "requirements.txt"
@@ -72,7 +68,6 @@ def check_backend_deps() -> bool:
         module = {
             "Pillow": "PIL",
             "python-multipart": "multipart",
-            "paddlepaddle": "paddle",
         }.get(pkg, pkg.replace("-", "_"))
         # 使用 find_spec 仅检查包是否存在，不真正导入，避免触发初始化警告且速度更快
         if importlib.util.find_spec(module) is None:
@@ -123,68 +118,40 @@ def build_frontend() -> bool:
     return True
 
 
-def check_paddleocr_models() -> None:
-    """检查 PaddleOCR 模型是否已下载，缺失时自动下载"""
-    log("检查 PaddleOCR 模型...", Colors.YELLOW)
-    sys.path.insert(0, str(ROOT))
-    try:
-        from paddleocr import PaddleOCR
-        from backend.config import OCR_LANG
-        PaddleOCR(use_textline_orientation=False, lang=OCR_LANG, show_log=False)
-        log("PaddleOCR 模型就绪", Colors.GREEN)
-    except Exception as e:
-        log(f"PaddleOCR 模型下载失败: {e}", Colors.RED)
-        sys.exit(1)
-
-
 def start_production() -> None:
-    """生产模式：检查依赖 → 检查模型 → 构建前端 → 后端提供服务（单进程）"""
+    """生产模式：检查依赖 → 构建前端 → 委托 run_app 启动服务"""
     if not check_backend_deps():
         sys.exit(1)
-    check_paddleocr_models()
     if not build_frontend():
         sys.exit(1)
 
-    log("启动后端服务...", Colors.CYAN)
-    url = "http://localhost:8000"
-    print_url(url)
-
-    # 将项目根目录加入路径，确保 backend 包可导入
+    log("启动 KeyTagger...", Colors.CYAN)
+    # 起服务统一走 run_app：端口预检、OCR 预热、自动开浏览器、仅监听本机
     sys.path.insert(0, str(ROOT))
-    import uvicorn
-
-    try:
-        uvicorn.run(
-            "backend.main:app",
-            host="0.0.0.0",
-            port=8000,
-            reload=False,
-            log_level="info",
-        )
-    except KeyboardInterrupt:
-        log("服务已关闭", Colors.GREEN)
+    import run_app
+    run_app.main()
+    log("服务已关闭", Colors.GREEN)
 
 
 def start_dev() -> None:
-    """开发模式：检查依赖 → 检查模型 → 后台后端 + 前台 Vite 热更新"""
+    """开发模式：检查依赖 → 后台后端 + 前台 Vite 热更新"""
     if not check_backend_deps():
         sys.exit(1)
-    check_paddleocr_models()
     log("启动开发模式...", Colors.CYAN)
 
     python = sys.executable
     npm = "npm.cmd" if sys.platform == "win32" else "npm"
 
-    # 启动后端（子进程）
-    log("启动后端服务 (端口 8000, hot-reload)...", Colors.CYAN)
+    # 启动后端（子进程，不自动开浏览器）
+    log("启动后端服务 (端口 8000)...", Colors.CYAN)
     backend = subprocess.Popen(
-        [python, str(BACKEND_DIR / "main.py")],
+        [python, str(ROOT / "run_app.py"), "--no-browser"],
         cwd=ROOT,
         creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0,
     )
     time.sleep(2)
 
-    url = "http://localhost:5173"
+    url = "http://localhost:3000"
     print_url(url)
 
     # 前台运行 Vite（用户 Ctrl+C 时在此处捕获）

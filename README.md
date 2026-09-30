@@ -9,7 +9,7 @@ KeyTagger 是一款轻量级开源工具：上传一张游戏键位设置界面�
 | 功能 | 说明 |
 | ---- | ---- |
 | 📥 导入截图 | 点击或拖拽上传游戏键位设置界面截图（PNG / JPG / WebP / BMP） |
-| 🤖 自动识别 | 调用 PaddleOCR 识别图片中的按键名称（如 `W`、`地图`）及坐标 |
+| 🤖 自动识别 | 调用 RapidOCR 识别图片中的按键名称（如 `W`、`地图`）及坐标 |
 | 🧭 智能映射 | 根据坐标自动将识别文字映射到标准 QWERTY 键盘布局的对应按键 |
 | ⌨️ 可视化展示 | 使用 `react-simple-keyboard` 渲染键盘，每个按键上显示识别出的功能文本 |
 | ✏️ 手动修正 | 点击键盘按键弹出输入框，修改/添加功能名称（如将识别错误的 `M` 改为 `地图`） |
@@ -18,7 +18,7 @@ KeyTagger 是一款轻量级开源工具：上传一张游戏键位设置界面�
 ## 工作原理
 
 1. **上传截图**：用户上传游戏键位设置界面的截图。
-2. **OCR 识别**：后端调用 PaddleOCR，返回所有文字的文本内容与边界框坐标 `(x, y, w, h)`。
+2. **OCR 识别**：后端调用 RapidOCR（PP-OCR 模型），返回所有文字的文本内容与边界框坐标 `(x, y, w, h)`。
 3. **坐标映射**：识别结果按 `y` 坐标分组为行（对应键盘的物理行），行内按 `x` 坐标排序，依次映射到标准 QWERTY 布局对应行的按键上（`config.py` 中定义了 58 个物理按键的 `(row, col)` 位置）。
 4. **可视化展示**：前端在键盘上展示每个按键的功能名称，有功能的按键高亮显示。
 5. **手动修正**：点击按键即可编辑功能名，修改实时同步到后端。
@@ -26,7 +26,20 @@ KeyTagger 是一款轻量级开源工具：上传一张游戏键位设置界面�
 
 ## 快速开始
 
-### 一键启动（推荐）
+### 免安装版（推荐普通用户）
+
+无需安装 Python 和 Node.js：
+
+1. 下载 `KeyTagger-windows-x64.zip`（Release 附件，或自行打包，见下文）
+2. 解压到任意文件夹
+3. 双击 `KeyTagger.exe`，浏览器会自动打开 `http://127.0.0.1:8000`
+4. 使用完毕后关闭命令行窗口即可退出
+
+> - 导出的 JSON 与运行数据保存在 exe 同级的 `uploads/` 文件夹
+> - 个别杀毒软件可能对未签名的打包程序误报，添加信任即可
+> - 服务固定使用 8000 端口，被占用时请先关闭占用该端口的程序
+
+### 一键启动（源码运行）
 
 ```bash
 python start.py
@@ -47,18 +60,18 @@ npm run build
 cd ..
 
 # 3. 启动服务
-python main.py
+python run_app.py
 ```
 
-> 首次运行 PaddleOCR 会自动下载识别模型，请保持网络畅通。
+> OCR 模型随 `rapidocr_onnxruntime` 包内置，无需额外下载。
 
 ### 开发模式（热更新）
 
 ```bash
-# 终端1：后端服务（端口 8000）
-python main.py
+# 终端1：后端服务（端口 8000，不自动开浏览器）
+python run_app.py --no-browser
 
-# 终端2：前端开发服务器（端口 5173，已配置代理到后端）
+# 终端2：前端开发服务器（端口 3000，已配置代理到后端）
 cd frontend
 npm run dev
 ```
@@ -91,8 +104,8 @@ npm run dev
 
 ```
 KeyTagger/
-├── backend/                    # 后端（FastAPI + PaddleOCR）
-│   ├── main.py                 # FastAPI 启动入口，挂载路由和静态文件
+├── backend/                    # 后端（FastAPI + RapidOCR）
+│   ├── app.py                  # FastAPI 应用定义：健康检查、路由挂载、静态托管（MIME 修复）
 │   ├── routes.py               # API 路由层（/upload, /keymap, /export）
 │   ├── ocr_service.py          # OCR 识别与坐标映射逻辑
 │   ├── keyboard_service.py     # 键位状态管理（增删改查）
@@ -112,6 +125,11 @@ KeyTagger/
 │   ├── package.json
 │   └── vite.config.js          # 开发代理：/api → localhost:8000
 ├── start.py                    # 一键启动脚本（自动检查依赖并构建）
+├── run_app.py                  # 应用入口：启动服务 + 自动开浏览器（exe 打包入口）
+├── build_exe.py                # 一键打包脚本：PyInstaller → dist/KeyTagger + zip
+├── KeyTagger.spec              # PyInstaller 打包配置
+├── test_ocr_mapping.py         # OCR 识别与映射回归测试
+├── test_data/                  # 测试截图与期望映射（png + json 成对）
 ├── requirements.txt            # Python 依赖
 └── README.md
 ```
@@ -128,15 +146,15 @@ KeyTagger/
 
 ## 技术栈
 
-- **后端**：Python 3.10+ · FastAPI · Uvicorn · PaddleOCR · Pydantic
+- **后端**：Python 3.10+ · FastAPI · Uvicorn · RapidOCR（onnxruntime）· Pydantic
 - **前端**：React 18 · Vite · Axios · react-simple-keyboard
-- **运行方式**：后端提供静态前端资源，通过 `python main.py` 启动，在 `http://localhost:8000` 提供服务
+- **运行方式**：后端提供静态前端资源，入口为 `run_app.py`（`start.py` 检查环境后委托它启动），在 `http://127.0.0.1:8000` 提供服务
 
 ## 常见问题
 
 **Q: 页面空白，控制台报 MIME type 错误？**
 
-A: Windows 注册表可能将 `.js` 文件错误识别为 `text/plain`。项目已在 `main.py` 中强制注册正确的 MIME 类型，请重启服务并 `Ctrl+F5` 强制刷新浏览器缓存。
+A: Windows 注册表可能将 `.js` 文件错误识别为 `text/plain`。项目已在 `backend/app.py` 中强制注册正确的 MIME 类型，请重启服务并 `Ctrl+F5` 强制刷新浏览器缓存。
 
 **Q: OCR 识别效果不理想？**
 
@@ -144,7 +162,17 @@ A: 识别精度与截图质量相关，建议使用高清截图。识别结果�
 
 **Q: 端口被占用？**
 
-A: 修改 `backend/config.py` 中的 `PORT` 配置即可更换端口。
+A: 源码运行时可修改 `backend/config.py` 中的 `PORT` 配置更换端口；免安装版固定使用 8000 端口，请先关闭占用该端口的程序。
+
+## 打包免安装版（开发者）
+
+在装有 Python 与 Node.js 的机器上执行：
+
+```bash
+python build_exe.py
+```
+
+脚本会自动安装 PyInstaller → 构建前端 → 打包 → 压缩，产物为 `dist/KeyTagger/` 目录和 `KeyTagger-windows-x64.zip`（约 117 MB）。打包配置见 `KeyTagger.spec`（需携带 RapidOCR 内置模型与前端构建产物）。
 
 ## 开源协议
 
