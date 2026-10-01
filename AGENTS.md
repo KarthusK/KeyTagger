@@ -33,7 +33,7 @@ cd frontend && npm run dev    # Vite 开发服务器（端口 3000，代理 /api
 ## 架构要点
 
 - **键位数据是内存单例**：`keyboard_service`（`backend/keyboard_service.py`）进程内维护 58 键映射，重启即丢失，无持久化。
-- **双处布局必须同步**：后端 `config.py` 的 `QWERTY_LAYOUT`（按键名用浏览器 `KeyboardEvent.code`，如 `KeyW`）与前端 `frontend/src/components/Keyboard.jsx` 的 `KEY_MAP`（`react-simple-keyboard` 按钮字符串 → 按键名）一一对应，改一边必须同步另一边。
+- **双处布局必须同步**：后端 `config.py` 的 `QWERTY_LAYOUT`（按键名用浏览器 `KeyboardEvent.code`，如 `KeyW`）与前端 `frontend/src/utils/keyLayout.js` 的 `KEY_MAP`（`react-simple-keyboard` 按钮字符串 → 按键名，屏幕键盘与生成图片共用该模块）一一对应，改一边必须同步另一边。
 - **OCR 识别与映射分离**：`ocr_service.py::recognize` 只做引擎调用（RapidOCR → `OCRResult` 列表），`map_to_keys` 做映射（按 y 分组为行、行内按 x 排序，行内首个可匹配文本是按键标签、其余拼接为功能名），四级匹配依赖 `config.py` 的三张混淆映射表（字形/数字字母/复合键），与 OCR 引擎解耦——换引擎只动 `recognize`。
 - **测试基线**：`test_data/` 内 png+同名 json（期望格式 `{"功能名": "键标签"}`），`test_ocr_mapping.py` 对比断言（忽略空格与全/半角括号差异）。
 

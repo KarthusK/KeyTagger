@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useKeymap } from './store/keymapContext'
 import KeymapKeyboard from './components/Keyboard'
+import ImageExportModal from './components/ImageExportModal'
 import { UploadIcon, SunIcon, MoonIcon, JsonIcon } from './components/icons'
 
 function useTheme() {
@@ -44,6 +45,7 @@ export default function App() {
   const [confirmingReset, setConfirmingReset] = useState(false)
   const [notice, setNotice] = useState(null) // 重复文件替换记录时的临时提示 { text, key }
   const noticeTimerRef = useRef(null)
+  const [imageModalOpen, setImageModalOpen] = useState(false) // 生成图片弹窗
 
   const keyCount = Object.values(keymap).filter((m) => m.function).length
 
@@ -234,6 +236,13 @@ export default function App() {
               <button className="btn btn-primary" onClick={exportKeymap} disabled={keyCount === 0}>
                 导出 JSON
               </button>
+              <button
+                className="btn btn-success"
+                onClick={() => setImageModalOpen(true)}
+                disabled={keyCount === 0}
+              >
+                生成图片
+              </button>
             </div>
           </div>
           <KeymapKeyboard />
@@ -278,6 +287,10 @@ export default function App() {
         <div className="lightbox" onClick={() => setPreviewUrl(null)}>
           <img src={previewUrl} alt="截图预览" />
         </div>
+      )}
+
+      {imageModalOpen && (
+        <ImageExportModal keymap={keymap} onClose={() => setImageModalOpen(false)} />
       )}
     </div>
   )

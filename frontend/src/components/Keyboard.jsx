@@ -2,41 +2,8 @@ import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import Keyboard from 'react-simple-keyboard'
 import 'react-simple-keyboard/build/css/index.css'
 import { useKeymap } from '../store/keymapContext'
-
-const LAYOUT = {
-  default: [
-    '{esc} f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12',
-    '` 1 2 3 4 5 6 7 8 9 0 - = {bksp}',
-    '{tab} q w e r t y u i o p [ ] \\',
-    '{caps} a s d f g h j k l ; \' {enter}',
-    '{shiftl} z x c v b n m , . / {shiftr}',
-    '{ctrll} {altl} {space} {altr} {ctrlr}',
-  ],
-}
-
-const KEY_MAP = {
-  '{esc}': 'Escape', 'f1': 'F1', 'f2': 'F2', 'f3': 'F3', 'f4': 'F4',
-  'f5': 'F5', 'f6': 'F6', 'f7': 'F7', 'f8': 'F8',
-  'f9': 'F9', 'f10': 'F10', 'f11': 'F11', 'f12': 'F12',
-  '`': 'Backquote', '1': 'Digit1', '2': 'Digit2', '3': 'Digit3',
-  '4': 'Digit4', '5': 'Digit5', '6': 'Digit6', '7': 'Digit7',
-  '8': 'Digit8', '9': 'Digit9', '0': 'Digit0', '-': 'Minus',
-  '=': 'Equal', '{bksp}': 'Backspace',
-  '{tab}': 'Tab', 'q': 'KeyQ', 'w': 'KeyW', 'e': 'KeyE',
-  'r': 'KeyR', 't': 'KeyT', 'y': 'KeyY', 'u': 'KeyU',
-  'i': 'KeyI', 'o': 'KeyO', 'p': 'KeyP', '[': 'BracketLeft',
-  ']': 'BracketRight', '\\': 'Backslash',
-  '{caps}': 'CapsLock', 'a': 'KeyA', 's': 'KeyS', 'd': 'KeyD',
-  'f': 'KeyF', 'g': 'KeyG', 'h': 'KeyH', 'j': 'KeyJ',
-  'k': 'KeyK', 'l': 'KeyL', ';': 'Semicolon', "'": 'Quote',
-  '{enter}': 'Enter',
-  '{shiftl}': 'ShiftLeft', 'z': 'KeyZ', 'x': 'KeyX', 'c': 'KeyC',
-  'v': 'KeyV', 'b': 'KeyB', 'n': 'KeyN', 'm': 'KeyM',
-  ',': 'Comma', '.': 'Period', '/': 'Slash',
-  '{shiftr}': 'ShiftRight',
-  '{ctrll}': 'ControlLeft', '{ctrlr}': 'ControlRight',
-  '{altl}': 'AltLeft', '{altr}': 'AltRight', '{space}': 'Space',
-}
+// 布局与按键映射来自共享模块，与后端 config.py 的 QWERTY_LAYOUT 一一对应
+import { LAYOUT, KEY_MAP } from '../utils/keyLayout'
 
 // 功能文本经 innerHTML 注入按钮，先转义防止 OCR/用户输入中的特殊字符破坏结构
 function escapeHtml(text) {

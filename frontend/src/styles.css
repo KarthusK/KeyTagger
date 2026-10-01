@@ -1,6 +1,10 @@
 /* ========== 设计令牌（浅色默认 / [data-theme=dark] 暗色） ========== */
 :root {
   color-scheme: light;
+  /* 全站唯一字体栈：中文字体优先，Windows/macOS 下中英文都由同一字体渲染，避免混排导致字重不一致 */
+  --font-sans: 'Microsoft YaHei', 'PingFang SC', 'Hiragino Sans GB',
+    'Noto Sans CJK SC', 'Source Han Sans SC', 'Segoe UI', system-ui,
+    -apple-system, Roboto, Arial, sans-serif;
   --bg: #f7f8fa;
   --card: #ffffff;
   --border: #e5e7eb;
@@ -18,6 +22,7 @@
   --danger-soft: #fef2f2;
   --danger-border: #fecaca;
   --success: #16a34a;
+  --success-hover: #15803d;
   --success-soft: #dcfce7;
   --success-border: #86efac;
   --key-bg: #ffffff;
@@ -50,6 +55,7 @@
   --danger-soft: #32242b;
   --danger-border: #713d41;
   --success: #4ade80;
+  --success-hover: #86efac;
   --success-soft: #1e352e;
   --success-border: #2e724c;
   --key-bg: #1d2028;
@@ -71,12 +77,19 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
-    'Microsoft YaHei', Roboto, sans-serif;
+  font-family: var(--font-sans);
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
   transition: background 0.2s;
+}
+
+/* 表单控件默认不继承字体，会让按钮/输入框落到 UA 默认字体（与页面文字不同款） */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
 }
 
 .app {
@@ -138,7 +151,7 @@ body {
   font-size: 14px;
   cursor: pointer;
   transition: all 0.15s;
-  font-weight: 500;
+  font-weight: 400;
   background: none;
   color: var(--text);
 }
@@ -167,6 +180,18 @@ body {
   color: var(--text);
   background: var(--key-bg-hover);
   border-color: var(--text-muted);
+}
+
+/* 生成图片：用成功色与「导出 JSON」的主色区分开 */
+.btn-success {
+  background: var(--success);
+  border-color: var(--success);
+  color: var(--primary-contrast);
+}
+
+.btn-success:hover:not(:disabled) {
+  background: var(--success-hover);
+  border-color: var(--success-hover);
 }
 
 .btn-danger-ghost {
@@ -199,7 +224,7 @@ body {
   cursor: pointer;
   padding: 5px 8px;
   border-radius: 6px;
-  font-weight: 500;
+  font-weight: 400;
   white-space: nowrap;
 }
 
@@ -246,7 +271,7 @@ body {
 
 .upload-text {
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 400;
   color: var(--text);
 }
 
@@ -389,7 +414,7 @@ body {
   flex: 1;
   min-width: 0;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 400;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
@@ -450,7 +475,8 @@ body {
 }
 
 /* ========== 键帽 ========== */
-.simple-keyboard {
+.simple-keyboard.simple-keyboard {
+  font-family: var(--font-sans); /* 覆盖 react-simple-keyboard 默认的 Helvetica/Arial 字体栈 */
   max-width: 1150px;
   margin: 0 auto;
   background: transparent;
@@ -459,7 +485,7 @@ body {
 .simple-keyboard .hg-button.hg-button {
   height: 54px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 400;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -620,6 +646,71 @@ body {
   display: flex;
   gap: 8px;
   margin-left: auto;
+}
+
+/* ========== 生成图片弹窗 ========== */
+.image-modal {
+  width: 720px;
+  max-width: 94vw;
+}
+
+.image-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.image-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.image-field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.image-field-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.image-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+/* 复选框不受 .edit-modal input 的整宽输入框样式影响 */
+.image-check input[type='checkbox'] {
+  width: auto;
+  padding: 0;
+  margin: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+/* 预览区固定白底：导出图本身就是浅色，所见即所得 */
+.image-preview {
+  max-height: 52vh;
+  overflow: auto;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.image-preview canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
 }
 
 /* ========== 截图预览大图 ========== */
