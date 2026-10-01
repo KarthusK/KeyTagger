@@ -779,14 +779,14 @@ textarea {
   cursor: pointer;
 }
 
-/* 预览区固定白底：导出图本身就是浅色，所见即所得 */
+/* 预览区底色跟随主题：导出图配色已随主题切换，留白边也保持一致 */
 .image-preview {
   max-height: 52vh;
   overflow: auto;
   padding: 8px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--card);
 }
 
 .image-preview canvas {

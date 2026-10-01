@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useKeymap } from './store/keymapContext'
 import KeymapKeyboard from './components/Keyboard'
 import ImageExportModal from './components/ImageExportModal'
@@ -7,8 +7,12 @@ import { UploadIcon, SunIcon, MoonIcon, JsonIcon } from './components/icons'
 
 function useTheme() {
   const [theme, setTheme] = useState(() => localStorage.getItem('kt-theme') === 'dark' ? 'dark' : 'light')
-  useEffect(() => {
+  // 用 layout effect 写 data-theme：在浏览器绘制前生效（避免首屏闪白），
+  // 且早于子组件的 useEffect，保证同一轮渲染里各处读到的都是新主题
+  useLayoutEffect(() => {
     document.documentElement.dataset.theme = theme === 'dark' ? 'dark' : ''
+  }, [theme])
+  useEffect(() => {
     localStorage.setItem('kt-theme', theme)
   }, [theme])
   return [theme, () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))]
@@ -345,6 +349,8 @@ export default function App() {
         <ImageExportModal
           keymap={keymap}
           background={background}
+          theme={theme}
+          onToggleTheme={toggleTheme}
           onClose={() => setImageModalOpen(false)}
         />
       )}

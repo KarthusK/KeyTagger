@@ -43,17 +43,49 @@ function pageFont() {
   return value || FALLBACK_FONT
 }
 
-// 固定浅色配色，与 styles.css 的设计令牌一致（导出图不跟随应用深浅色）
-const COLOR = {
-  bg: '#ffffff',
-  keyBg: '#ffffff',      // --key-bg
-  keyBorder: '#e2e5ea',  // --key-border
-  keyText: '#374151',    // --key-text
-  boundBg: '#eef2ff',    // --primary-soft
-  boundBorder: '#c7d2fe',// --primary-border
-  text: '#111827',       // --text
-  accent: '#4f46e5',     // --primary
-  muted: '#9ca3af',      // --text-muted
+// 主题配色：Canvas 读取页面 CSS 变量，使导出图跟随应用浅色/深色主题；
+// 无 DOM 环境（Node 校验）回退到浅色主题默认值，保证纯逻辑断言稳定。
+const PALETTE_FALLBACK = {
+  bg: '#ffffff',          // --card：无背景图时的画布底色
+  keyBg: '#ffffff',       // --key-bg
+  keyBorder: '#e2e5ea',   // --key-border
+  keyText: '#374151',     // --key-text
+  boundBg: '#eef2ff',     // --primary-soft
+  boundBorder: '#c7d2fe', // --primary-border
+  text: '#111827',        // --text
+  accent: '#4f46e5',      // --primary
+  muted: '#9ca3af',       // --text-muted
+  scrimRgb: '255, 255, 255',      // --bg-scrim-rgb
+  scrimBoundRgb: '238, 242, 255', // --bg-scrim-bound-rgb
+}
+
+const PALETTE_VARS = {
+  bg: '--card',
+  keyBg: '--key-bg',
+  keyBorder: '--key-border',
+  keyText: '--key-text',
+  boundBg: '--primary-soft',
+  boundBorder: '--primary-border',
+  text: '--text',
+  accent: '--primary',
+  muted: '--text-muted',
+  scrimRgb: '--bg-scrim-rgb',
+  scrimBoundRgb: '--bg-scrim-bound-rgb',
+}
+
+// 读取配色：默认从 <html> 解析（跟随全局主题）；
+// 也可传入指定元素（生成图片弹窗把主题声明在预览容器上），
+// 这样配色只取决于该元素当前的 data-theme，不依赖全局主题何时写入 —— 避免子组件重绘先于父组件写主题的时序 bug。
+export function pagePalette(root) {
+  if (typeof getComputedStyle !== 'function') return { ...PALETTE_FALLBACK }
+  const el = root || (typeof document !== 'undefined' ? document.documentElement : null)
+  if (!el) return { ...PALETTE_FALLBACK }
+  const cs = getComputedStyle(el)
+  const palette = {}
+  Object.entries(PALETTE_VARS).forEach(([key, cssVar]) => {
+    palette[key] = cs.getPropertyValue(cssVar).trim() || PALETTE_FALLBACK[key]
+  })
+  return palette
 }
 
 // 背景效果默认值：屏幕端由 styles.css 的同名 CSS 变量提供，Canvas 读取同一变量，
@@ -65,12 +97,10 @@ const CSS_NUMBER_DEFAULTS = {
   '--bg-scrim': BACKGROUND_DEFAULTS.scrim,
 }
 
-// 导出图固定浅色主题，故蒙层基色取浅色三元组；不透明度与屏幕端共用 --bg-scrim
-const SCRIM_RGB = { key: '255, 255, 255', bound: '238, 242, 255' }
-
-// 满幅背景下给标题/署名加一圈极淡白色柔光：避免深色背景上深色文字看不清（不形成可见白底）
-const TEXT_GLOW = 'rgba(255, 255, 255, 0.9)'
+// 满幅背景下给标题/署名加一圈极淡柔光（取当前主题的蒙层基色）：
+// 浅色主题为白色柔光、深色主题为深色柔光，避免任意背景上文字看不清，且不形成可见白底
 const TEXT_GLOW_BLUR = 6
+const TEXT_GLOW_ALPHA = 0.9
 
 // 读取页面 CSS 变量中的数值（如 "10px" / "0.62"）；无 DOM 环境返回默认值
 export function cssNumber(name) {
@@ -259,13 +289,13 @@ function fitTitle(ctx, text, maxWidth, font) {
 }
 
 // 绘制标题文字（单行居中）；背景模式下加一圈极淡柔光保证可读
-function drawTitleText(ctx, fitted, cx, cy, font, glow = false) {
+function drawTitleText(ctx, fitted, cx, cy, font, palette, glow = false) {
   ctx.font = `700 ${fitted.size}px ${font}`
-  ctx.fillStyle = COLOR.text
+  ctx.fillStyle = palette.text
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   if (glow) {
-    ctx.shadowColor = TEXT_GLOW
+    ctx.shadowColor = `rgba(${palette.scrimRgb}, ${TEXT_GLOW_ALPHA})`
     ctx.shadowBlur = TEXT_GLOW_BLUR
   }
   ctx.fillText(fitted.out, cx, cy)
@@ -276,7 +306,7 @@ function drawTitleText(ctx, fitted, cx, cy, font, glow = false) {
 }
 
 // 绘制键位图，返回离屏 canvas（浏览器环境）
-export function renderKeymapImage({ keymap = {}, title = '', watermark = true, scale = SCALE, measured, background = null } = {}) {
+export function renderKeymapImage({ keymap = {}, title = '', watermark = true, scale = SCALE, measured, background = null, paletteRoot } = {}) {
   const effectiveTitle = resolveTitle(title)
   // measured 显式传入时以传入值为准（含 null 表示走兜底）；未传则现场量取
   const metrics = measured === undefined ? measureKeyboard() : measured
@@ -288,8 +318,9 @@ export function renderKeymapImage({ keymap = {}, title = '', watermark = true, s
   const ctx = canvas.getContext('2d')
   ctx.scale(scale, scale)
   const font = pageFont() // 与页面同款字体，保证导出图与界面一致
+  const palette = pagePalette(paletteRoot) // 跟随主题（由传入元素或 <html> 决定）
 
-  ctx.fillStyle = COLOR.bg
+  ctx.fillStyle = palette.bg
   ctx.fillRect(0, 0, geo.width, geo.height)
 
   // 背景：与屏幕端 .keyboard-section.has-bg 同一套规则，但铺满整张画布（与预览所见一致）。
@@ -299,8 +330,8 @@ export function renderKeymapImage({ keymap = {}, title = '', watermark = true, s
   if (background && background.width > 0 && background.height > 0) {
     const scrim = cssNumber('--bg-scrim')
     scrimColor = {
-      key: `rgba(${SCRIM_RGB.key}, ${scrim})`,
-      bound: `rgba(${SCRIM_RGB.bound}, ${scrim})`,
+      key: `rgba(${palette.scrimRgb}, ${scrim})`,
+      bound: `rgba(${palette.scrimBoundRgb}, ${scrim})`,
     }
 
     // 满幅清晰背景（cover，居中裁剪）
@@ -314,15 +345,15 @@ export function renderKeymapImage({ keymap = {}, title = '', watermark = true, s
   if (geo.titleY !== null) {
     const fitted = fitTitle(ctx, effectiveTitle, geo.width - PAD * 2, font)
     // 不留白底：直接压在背景上，仅靠极淡柔光保证可读
-    drawTitleText(ctx, fitted, geo.width / 2, geo.titleY, font, Boolean(blurPanel))
+    drawTitleText(ctx, fitted, geo.width / 2, geo.titleY, font, palette, Boolean(blurPanel))
   }
 
   geo.boxes.forEach((box) => {
     const mapping = keymap[box.keyName]
     const fn = mapping?.function || ''
     const label = mapping?.label || box.keyName || box.token
-    const borderColor = fn ? COLOR.boundBorder : COLOR.keyBorder
-    const fillColor = fn ? COLOR.boundBg : COLOR.keyBg
+    const borderColor = fn ? palette.boundBorder : palette.keyBorder
+    const fillColor = fn ? palette.boundBg : palette.keyBg
 
     if (blurPanel) {
       // 有背景：键内 = 虚化背景副本 + 半透明蒙层（文字随后绘制，清晰度不受影响）
@@ -380,7 +411,7 @@ export function renderKeymapImage({ keymap = {}, title = '', watermark = true, s
       // 已绑定：功能名居中（最多 2 行，对齐 .hg-key-fn 的 11px/1.3/2 行），键帽标签缩到右下角
       ctx.font = `600 11px ${font}`
       const lines = wrapText(ctx, fn, maxTextW, 2)
-      ctx.fillStyle = COLOR.text
+      ctx.fillStyle = palette.text
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       const lineH = 14.3
@@ -388,7 +419,7 @@ export function renderKeymapImage({ keymap = {}, title = '', watermark = true, s
       lines.forEach((line, i) => ctx.fillText(line, box.x + box.w / 2, startY + i * lineH))
 
       ctx.font = `600 9px ${font}`
-      ctx.fillStyle = COLOR.accent
+      ctx.fillStyle = palette.accent
       ctx.globalAlpha = 0.85
       ctx.textAlign = 'right'
       ctx.textBaseline = 'alphabetic'
@@ -397,7 +428,7 @@ export function renderKeymapImage({ keymap = {}, title = '', watermark = true, s
     } else {
       // 未绑定：只显示键帽标签（对齐界面 13px/400 与 --key-text）
       ctx.font = `400 13px ${font}`
-      ctx.fillStyle = COLOR.keyText
+      ctx.fillStyle = palette.keyText
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       ctx.fillText(label, box.x + box.w / 2, centerY)
@@ -411,9 +442,9 @@ export function renderKeymapImage({ keymap = {}, title = '', watermark = true, s
     const parts = BRAND.nameParts && BRAND.nameParts.length ? BRAND.nameParts : [BRAND.name]
     const totalW = parts.reduce((sum, part) => sum + ctx.measureText(part).width, 0)
 
-    // 不留白底：直接压在背景上，仅靠极淡柔光保证可读
+    // 不留白底：直接压在背景上，仅靠极淡柔光保证可读（柔光取当前主题的蒙层基色）
     if (blurPanel) {
-      ctx.shadowColor = TEXT_GLOW
+      ctx.shadowColor = `rgba(${palette.scrimRgb}, ${TEXT_GLOW_ALPHA})`
       ctx.shadowBlur = TEXT_GLOW_BLUR
     }
 
@@ -421,14 +452,14 @@ export function renderKeymapImage({ keymap = {}, title = '', watermark = true, s
     let tx = geo.signature.x - totalW
     ctx.textAlign = 'left'
     parts.forEach((part, i) => {
-      ctx.fillStyle = i === 0 ? COLOR.text : COLOR.accent
+      ctx.fillStyle = i === 0 ? palette.text : palette.accent
       ctx.fillText(part, tx, geo.signature.y)
       tx += ctx.measureText(part).width
     })
 
     ctx.textAlign = 'right'
     ctx.font = `400 13px ${font}`
-    ctx.fillStyle = COLOR.muted
+    ctx.fillStyle = palette.muted
     ctx.fillText(BRAND.url, geo.signature.x, geo.signature.urlY)
 
     if (blurPanel) {
