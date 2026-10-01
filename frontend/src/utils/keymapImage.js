@@ -24,6 +24,7 @@ const FOOTER = 62       // 署名区高度（开启水印时占用底部空间�
 const KEY_R = 6         // 键圆角（对齐界面 6px）
 const BORDER_TOP = 1    // 键描边 1px
 const BORDER_BOTTOM = 3 // 界面键帽的 border-bottom-width: 3px
+const TAG_SIZE = 10     // 导出图绑定键角标字号（比界面 .hg-key-tag 的 9px 大 1px，看图软件里更清楚）
 
 // 量不到屏幕键盘时的兜底尺寸（取值同样对齐界面 CSS）
 const FALLBACK_KEY_H = 54
@@ -248,6 +249,13 @@ function buildBlurredPanel(image, panel, blur) {
   return { canvas, margin }
 }
 
+// 行盒中心到基线的偏移（fontBoundingBox 为字体级度量，与字符串无关）：
+// 镜像 CSS 行盒居中（flex / line-height 的半行距对称），不依赖浏览器 textBaseline='middle' 的语义差异
+function fontCenterOffset(ctx) {
+  const m = ctx.measureText('中')
+  return (m.fontBoundingBoxAscent - m.fontBoundingBoxDescent) / 2
+}
+
 // 按字符贪心换行，最多 maxLines 行；放不下时在最后一行加省略号（对齐屏幕 .hg-key-fn 的 2 行 clamp）
 function wrapText(ctx, text, maxWidth, maxLines) {
   const chars = Array.from(String(text))
@@ -399,25 +407,30 @@ export function renderKeymapImage({ keymap = {}, title = '', watermark = true, s
       const lines = wrapText(ctx, fn, maxTextW, 2)
       ctx.fillStyle = palette.text
       ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
+      ctx.textBaseline = 'alphabetic'
       const lineH = 14.3
       const startY = centerY - ((lines.length - 1) * lineH) / 2
-      lines.forEach((line, i) => ctx.fillText(line, box.x + box.w / 2, startY + i * lineH))
+      const fnOff = fontCenterOffset(ctx)
+      lines.forEach((line, i) => ctx.fillText(line, box.x + box.w / 2, startY + i * lineH + fnOff))
 
-      ctx.font = `600 9px ${font}`
+      // 角标：对齐界面 .hg-key-tag 的 right:4px / bottom:3px（相对 padding box）、line-height:1 底边锚定
+      ctx.font = `600 ${TAG_SIZE}px ${font}`
       ctx.fillStyle = palette.accent
       ctx.globalAlpha = 0.85
       ctx.textAlign = 'right'
-      ctx.textBaseline = 'alphabetic'
-      ctx.fillText(label, box.x + box.w - 4, box.y + box.h - 3)
+      ctx.fillText(
+        label,
+        box.x + box.w - BORDER_TOP - 4,
+        box.y + box.h - BORDER_BOTTOM - 3 - TAG_SIZE / 2 + fontCenterOffset(ctx),
+      )
       ctx.globalAlpha = 1
     } else {
       // 未绑定：只显示键帽标签（对齐界面 13px/400 与 --key-text）
       ctx.font = `400 13px ${font}`
       ctx.fillStyle = palette.keyText
       ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText(label, box.x + box.w / 2, centerY)
+      ctx.textBaseline = 'alphabetic'
+      ctx.fillText(label, box.x + box.w / 2, centerY + fontCenterOffset(ctx))
     }
   })
 

@@ -789,11 +789,13 @@ textarea {
   background: var(--card);
 }
 
+/* 预览适应容器宽、整图可见；点击进放大层看完整内容（见 ImageExportModal 的 lightbox） */
 .image-preview canvas {
   display: block;
   max-width: 100%;
   height: auto;
   margin: 0 auto;
+  cursor: zoom-in;
 }
 
 /* ========== 截图预览大图 ========== */

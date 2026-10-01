@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { BRAND, measureKeyboard, renderKeymapImage, resolveTitle } from '../utils/keymapImage'
+import { BRAND, measureKeyboard, renderKeymapImage, resolveTitle, SCALE } from '../utils/keymapImage'
 import { SunIcon, MoonIcon } from './icons'
 
 // 生成键位图弹窗：自定义标题 + 可选右下角署名 + 共享背景，实时预览，支持复制到剪贴板与下载
@@ -9,6 +9,7 @@ export default function ImageExportModal({ keymap, background, theme, onToggleTh
   const [watermark, setWatermark] = useState(true)
   const [status, setStatus] = useState(null)   // { type: 'ok' | 'error', text }
   const [measured, setMeasured] = useState(null) // 屏幕键盘实测尺寸，用于同比例复刻
+  const [zoom, setZoom] = useState(null)       // 放大层：{ src, width }，width 为逻辑宽
   const previewRef = useRef(null)
   const canvasRef = useRef(null)
 
@@ -37,17 +38,28 @@ export default function ImageExportModal({ keymap, background, theme, onToggleTh
     if (previewRef.current) previewRef.current.replaceChildren(canvas)
   }, [keymap, effectiveTitle, watermark, measured, background, theme])
 
+  // Esc 分层：放大层打开时先关放大层，否则关弹窗
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return
+      if (zoom) setZoom(null)
+      else onClose()
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [onClose, zoom])
 
   const toBlob = useCallback(() => new Promise((resolve) => {
     const canvas = canvasRef.current
     if (!canvas) { resolve(null); return }
     canvas.toBlob((blob) => resolve(blob), 'image/png')
   }), [])
+
+  // 点击预览放大：lightbox 最大按 1:1 逻辑尺寸展示整图（物理宽 = 逻辑宽 × SCALE）
+  const openZoom = useCallback(() => {
+    const canvas = canvasRef.current
+    if (canvas) setZoom({ src: canvas.toDataURL('image/png'), width: canvas.width / SCALE })
+  }, [])
 
   const handleCopy = useCallback(async () => {
     setStatus(null)
@@ -81,71 +93,86 @@ export default function ImageExportModal({ keymap, background, theme, onToggleTh
   }, [toBlob])
 
   return (
-    <div className="edit-overlay" onClick={onClose}>
-      <div className="edit-modal image-modal" onClick={(e) => e.stopPropagation()}>
-        <h3>生成图片</h3>
-        <p className="edit-hint">按当前键盘生成键位图，可复制到剪贴板或下载 PNG</p>
+    <>
+      <div className="edit-overlay" onClick={onClose}>
+        <div className="edit-modal image-modal" onClick={(e) => e.stopPropagation()}>
+          <h3>生成图片</h3>
+          <p className="edit-hint">按当前键盘生成键位图，可复制到剪贴板或下载 PNG</p>
 
-        <div className="image-form">
-          <label className="image-field">
-            <span className="image-field-label">图片标题</span>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={BRAND.name}
-              autoFocus
-            />
-            <span className="image-field-hint">留空则默认使用项目名 {BRAND.name}</span>
-          </label>
-          <label className="image-check">
-            <input
-              type="checkbox"
-              checked={watermark}
-              onChange={(e) => setWatermark(e.target.checked)}
-            />
-            <span>附带水印（{BRAND.name} · {BRAND.url}）</span>
-          </label>
-        </div>
-
-        {/* data-theme 直接声明在预览容器上：配色只取决于这里的主题，不受全局主题写入时机影响 */}
-        <div className="image-preview" ref={previewRef} data-theme={theme} />
-
-        {status && (
-          <div className={status.type === 'ok' ? 'notice-message' : 'error-message'} role="status">
-            {status.text}
+          <div className="image-form">
+            <label className="image-field">
+              <span className="image-field-label">图片标题</span>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder={BRAND.name}
+                autoFocus
+              />
+              <span className="image-field-hint">留空则默认使用项目名 {BRAND.name}</span>
+            </label>
+            <label className="image-check">
+              <input
+                type="checkbox"
+                checked={watermark}
+                onChange={(e) => setWatermark(e.target.checked)}
+              />
+              <span>附带水印（{BRAND.name} · {BRAND.url}）</span>
+            </label>
           </div>
-        )}
 
-        <div className="edit-actions">
-          <button className="btn btn-secondary" onClick={onClose} title="关闭弹窗（Esc）">
-            关闭
-          </button>
-          <div className="edit-actions-right">
-            <button
-              className="icon-btn"
-              onClick={onToggleTheme}
-              title={theme === 'dark' ? '切换到浅色主题（导出图配色随之切换）' : '切换到深色主题（导出图配色随之切换）'}
-            >
-              {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+          {/* data-theme 直接声明在预览容器上：配色只取决于这里的主题，不受全局主题写入时机影响 */}
+          <div
+            className="image-preview"
+            ref={previewRef}
+            data-theme={theme}
+            onClick={openZoom}
+            title="点击放大查看"
+          />
+
+          {status && (
+            <div className={status.type === 'ok' ? 'notice-message' : 'error-message'} role="status">
+              {status.text}
+            </div>
+          )}
+
+          <div className="edit-actions">
+            <button className="btn btn-secondary" onClick={onClose} title="关闭弹窗（Esc）">
+              关闭
             </button>
-            <button
-              className="btn btn-secondary"
-              onClick={handleDownload}
-              title="保存到本地，文件名为 keymap.png"
-            >
-              下载 PNG
-            </button>
-            <button
-              className="btn btn-primary"
-              onClick={handleCopy}
-              title="复制到剪贴板，可直接粘贴到聊天窗口或画图"
-            >
-              复制图片
-            </button>
+            <div className="edit-actions-right">
+              <button
+                className="icon-btn"
+                onClick={onToggleTheme}
+                title={theme === 'dark' ? '切换到浅色主题（导出图配色随之切换）' : '切换到深色主题（导出图配色随之切换）'}
+              >
+                {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={handleDownload}
+                title="保存到本地，文件名为 keymap.png"
+              >
+                下载 PNG
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleCopy}
+                title="复制到剪贴板，可直接粘贴到聊天窗口或画图"
+              >
+                复制图片
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* 放大层与弹窗 overlay 平级：点击背景只关放大层；z-index 1100 盖在弹窗（1000）之上 */}
+      {zoom && (
+        <div className="lightbox" onClick={() => setZoom(null)}>
+          <img src={zoom.src} alt="生成图预览" style={{ maxWidth: `min(${zoom.width}px, 94vw)` }} />
+        </div>
+      )}
+    </>
   )
 }
