@@ -127,6 +127,7 @@ export default function KeymapKeyboard() {
   }, [getPointedKey, keymap])
 
   const handleDragOver = useCallback((e) => {
+    if (!dragSourceRef.current) return // 只接管键位自身的拖拽，避免影响文件拖入本区域的放置
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
     const { el, keyName } = getPointedKey(e)

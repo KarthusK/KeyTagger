@@ -108,21 +108,24 @@ export default function App() {
     }
   }
 
-  // 全窗口拖拽上传：文件拖到页面任意位置松手即可，拖拽期间顶部上传区高亮
+  // 全窗口拖拽上传：只接管「文件」拖拽。绝不能干预内部元素拖拽（如键位拖拽），
+  // 否则 window 级 dragover 会把键盘设好的 dropEffect='move' 覆盖成 'copy'，
+  // 与 dragstart 的 effectAllowed='move' 冲突导致 drop 不触发（键位拖拽失效）。
   useEffect(() => {
     const hasFiles = (e) => Array.from(e.dataTransfer?.types || []).includes('Files')
     const onDragEnter = (e) => {
+      if (!hasFiles(e)) return
       e.preventDefault()
-      if (hasFiles(e)) {
-        dragDepthRef.current += 1
-        setDragActive(true)
-      }
+      dragDepthRef.current += 1
+      setDragActive(true)
     }
     const onDragOver = (e) => {
+      if (!hasFiles(e)) return
       e.preventDefault()
       if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy'
     }
     const onDragLeave = (e) => {
+      if (!hasFiles(e)) return // 与 dragenter 配对，保证计数平衡
       e.preventDefault()
       dragDepthRef.current -= 1
       if (dragDepthRef.current <= 0) {
@@ -131,6 +134,7 @@ export default function App() {
       }
     }
     const onDrop = (e) => {
+      if (!hasFiles(e)) return // 键位拖拽不进入上传逻辑
       e.preventDefault()
       dragDepthRef.current = 0
       setDragActive(false)
