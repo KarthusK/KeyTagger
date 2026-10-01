@@ -356,36 +356,22 @@ export function renderKeymapImage({ keymap = {}, title = '', watermark = true, s
     const fillColor = fn ? palette.boundBg : palette.keyBg
 
     if (blurPanel) {
-      // 有背景：键内 = 虚化背景副本 + 半透明蒙层（文字随后绘制，清晰度不受影响）
+      // 有背景：与无背景分支（即界面 CSS border-box）同一套双层圆角矩形几何——
+      // 外层填边框色得到 1px 描边 + 3px 底边（底边随圆角平滑过渡），内层裁剪后画虚化背景副本 + 半透明蒙层
+      roundRectPath(ctx, box.x, box.y, box.w, box.h, KEY_R)
+      ctx.fillStyle = borderColor
+      ctx.fill()
+      const ix = box.x + BORDER_TOP
+      const iy = box.y + BORDER_TOP
+      const iw = box.w - BORDER_TOP * 2
+      const ih = box.h - BORDER_TOP - BORDER_BOTTOM
       ctx.save()
-      roundRectPath(ctx, box.x, box.y, box.w, box.h, KEY_R)
+      roundRectPath(ctx, ix, iy, iw, ih, Math.max(1, KEY_R - BORDER_TOP))
       ctx.clip()
-      ctx.drawImage(
-        blurPanel.canvas,
-        blurPanel.margin + box.x,
-        blurPanel.margin + box.y,
-        box.w,
-        box.h,
-        box.x,
-        box.y,
-        box.w,
-        box.h,
-      )
+      ctx.drawImage(blurPanel.canvas, blurPanel.margin + ix, blurPanel.margin + iy, iw, ih, ix, iy, iw, ih)
       ctx.fillStyle = fn ? scrimColor.bound : scrimColor.key
-      ctx.fillRect(box.x, box.y, box.w, box.h)
+      ctx.fillRect(ix, iy, iw, ih)
       ctx.restore()
-
-      // 键帽观感：1px 描边 + 3px 底边
-      roundRectPath(ctx, box.x, box.y, box.w, box.h, KEY_R)
-      ctx.strokeStyle = borderColor
-      ctx.lineWidth = BORDER_TOP
-      ctx.stroke()
-      ctx.beginPath()
-      ctx.moveTo(box.x + KEY_R, box.y + box.h - BORDER_BOTTOM / 2)
-      ctx.lineTo(box.x + box.w - KEY_R, box.y + box.h - BORDER_BOTTOM / 2)
-      ctx.strokeStyle = borderColor
-      ctx.lineWidth = BORDER_BOTTOM
-      ctx.stroke()
     } else {
       // 无背景（保持现状）：先按边框色填充整个圆角矩形，再叠一层内层圆角矩形 → 1px 描边 + 3px 底边
       roundRectPath(ctx, box.x, box.y, box.w, box.h, KEY_R)
