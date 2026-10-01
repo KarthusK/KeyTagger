@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useKeymap } from './store/keymapContext'
 import KeymapKeyboard from './components/Keyboard'
 import ImageExportModal from './components/ImageExportModal'
+import { formatOverwriteTooltip } from './utils/overwriteTooltip'
 import { UploadIcon, SunIcon, MoonIcon, JsonIcon } from './components/icons'
 
 function useTheme() {
@@ -62,11 +63,11 @@ export default function App() {
       (file.name && file.name.toLowerCase().endsWith('.json'))
     setImporting(isJson)
     // 等处理完成再入列，失败时不进记录区（错误横幅已提示）
-    const count = isJson ? await importKeymap(file) : await upload(file)
+    const result = isJson ? await importKeymap(file) : await upload(file)
     setImporting(false)
-    if (count === null) return
+    if (result === null) return
     const key = await getFileKey(file)
-    addRecord(file, isJson ? 'json' : 'image', count, key)
+    addRecord(file, isJson ? 'json' : 'image', result.count, key, result.overwritten, result.overwrites)
   }
 
   // 重复文件替换记录时的临时提示：显示文案并高亮对应行约 3 秒后自动消失
@@ -81,9 +82,9 @@ export default function App() {
     }, 3000)
   }
 
-  // 同一文件（内容哈希相同）重复上传时替换原记录：移到最前、刷新名称/按键数/缩略图，释放旧 objectURL，
-  // 并给出「已重新识别/导入」提示 + 短暂高亮被刷新的行
-  const addRecord = (file, kind, count, key) => {
+  // 同一文件（内容哈希相同）重复上传时替换原记录：移到最前、刷新名称/按键数/覆盖数/缩略图，
+  // 释放旧 objectURL，并给出「已重新识别/导入」提示 + 短暂高亮被刷新的行
+  const addRecord = (file, kind, count, key, overwritten = 0, overwrites = []) => {
     const id = ++recordIdRef.current
     const replaced = uploads.some((it) => it.key === key)
     setUploads((prev) => {
@@ -92,7 +93,7 @@ export default function App() {
         URL.revokeObjectURL(old.url)
         objectUrlsRef.current = objectUrlsRef.current.filter((u) => u !== old.url)
       }
-      const rec = { id, key, name: file.name, kind, count, refreshed: replaced }
+      const rec = { id, key, name: file.name, kind, count, overwritten, overwrites, refreshed: replaced }
       if (kind === 'image') {
         const url = URL.createObjectURL(file)
         objectUrlsRef.current.push(url)
@@ -280,6 +281,14 @@ export default function App() {
                       ? <>已导入 <b>{item.count}</b> 个按键</>
                       : <>已识别 <b>{item.count}</b> 个按键</>}
                   </span>
+                  {item.overwritten > 0 && (
+                    <span
+                      className="shot-overwrite"
+                      title={formatOverwriteTooltip(item.overwrites)}
+                    >
+                      覆盖 <b>{item.overwritten}</b> 个
+                    </span>
+                  )}
                 </div>
               ))}
             </div>

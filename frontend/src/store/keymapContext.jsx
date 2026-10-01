@@ -23,8 +23,12 @@ export function KeymapProvider({ children }) {
       const data = await api.uploadImage(file)
       if (data.success) {
         setKeymap(data.keymap)
-        // 返回本次截图识别出的键位数；失败时返回 null 由调用方区分
-        return data.mapped_count ?? 0
+        // 返回本次识别出的键位数、其中覆盖的键位数与覆盖明细；失败时返回 null 由调用方区分
+        return {
+          count: data.mapped_count ?? 0,
+          overwritten: data.overwritten_count ?? 0,
+          overwrites: data.overwrites ?? [],
+        }
       }
       return null
     } catch (e) {
@@ -42,8 +46,12 @@ export function KeymapProvider({ children }) {
       const data = await api.importKeymap(file)
       if (data.success) {
         setKeymap(data.keymap)
-        // 返回本次导入的按键数；失败时返回 null 由调用方区分
-        return data.imported_count ?? 0
+        // 返回本次导入的键位数、其中覆盖的键位数与覆盖明细；失败时返回 null 由调用方区分
+        return {
+          count: data.imported_count ?? 0,
+          overwritten: data.overwritten_count ?? 0,
+          overwrites: data.overwrites ?? [],
+        }
       }
       return null
     } catch (e) {

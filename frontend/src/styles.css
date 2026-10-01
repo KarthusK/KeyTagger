@@ -25,6 +25,9 @@
   --success-hover: #15803d;
   --success-soft: #dcfce7;
   --success-border: #86efac;
+  --warning: #b45309;
+  --warning-soft: #fffbeb;
+  --warning-border: #fcd34d;
   --key-bg: #ffffff;
   --key-bg-hover: #f3f4f6;
   --key-border: #e2e5ea;
@@ -58,6 +61,9 @@
   --success-hover: #86efac;
   --success-soft: #1e352e;
   --success-border: #2e724c;
+  --warning: #fbbf24;
+  --warning-soft: #2e2410;
+  --warning-border: #6b5518;
   --key-bg: #1d2028;
   --key-bg-hover: #262a34;
   --key-border: #2c313c;
@@ -431,6 +437,22 @@ textarea {
   color: var(--primary);
   font-weight: 700;
   font-size: 13px;
+}
+
+/* 本次上传/导入覆盖掉的已有绑定数（键位相同但文字不同才计入） */
+.shot-overwrite {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border: 1px solid var(--warning-border);
+  border-radius: 999px;
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.shot-overwrite b {
+  font-weight: 700;
 }
 
 /* ========== 键盘卡片 ========== */

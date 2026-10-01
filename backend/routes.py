@@ -35,10 +35,19 @@ async def upload_image(file: UploadFile = File(...)):
         results = ocr_service.recognize(filepath)
         # 映射到按键
         mapped = ocr_service.map_to_keys(results)
+        # 写入前统计"覆盖"明细（原本已绑定且文字不同），必须在 update_batch 之前
+        stats = keyboard_service.diff_batch(mapped)
         # 更新键位状态
         keyboard_service.update_batch(mapped)
-        # 返回完整键位映射；mapped_count 为本次截图识别出的键位数（非全局总数）
-        return {"success": True, "keymap": _serialize_keymap(), "mapped_count": len(mapped)}
+        # 返回完整键位映射；mapped_count 为本次截图识别出的键位数（非全局总数），
+        # overwritten_count / overwrites 为其中覆盖掉原有不同文字绑定的键位数与明细
+        return {
+            "success": True,
+            "keymap": _serialize_keymap(),
+            "mapped_count": len(mapped),
+            "overwritten_count": stats["overwritten"],
+            "overwrites": stats["overwrites"],
+        }
     except Exception as e:
         raise HTTPException(500, f"OCR 识别失败: {str(e)}")
     finally:
@@ -109,8 +118,16 @@ async def import_keymap(file: UploadFile = File(...)):
     if data and not applied:
         raise HTTPException(400, "JSON 中未找到有效的按键名，请使用本工具“导出 JSON”生成的文件")
 
+    # 写入前统计"覆盖"明细（原本已绑定且文字不同），与导入写入共用同一套归一化口径
+    stats = keyboard_service.diff_batch(keyboard_service.normalize_import(data))
     count = keyboard_service.import_dict(data)
-    return {"success": True, "keymap": _serialize_keymap(), "imported_count": count}
+    return {
+        "success": True,
+        "keymap": _serialize_keymap(),
+        "imported_count": count,
+        "overwritten_count": stats["overwritten"],
+        "overwrites": stats["overwrites"],
+    }
 
 
 @router.post("/reset")
