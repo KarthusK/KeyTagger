@@ -1,0 +1,2 @@
+# cmd.exe 按字节解析批处理：LF 行尾会让含中文的行被切碎执行（UTF-8 字节在 GBK 代码页下吞掉相邻 ASCII）
+*.bat text eol=crlf
