@@ -199,11 +199,29 @@ export default function KeymapKeyboard() {
             />
             <div className="edit-actions">
               {keymap[editingKey]?.function && (
-                <button className="btn btn-danger-ghost" onClick={handleUnbind}>解除绑定</button>
+                <button
+                  className="btn btn-danger-ghost"
+                  onClick={handleUnbind}
+                  title="清空该按键的功能名称"
+                >
+                  解除绑定
+                </button>
               )}
               <div className="edit-actions-right">
-                <button className="btn btn-secondary" onClick={handleCancel}>取消</button>
-                <button className="btn btn-primary" onClick={handleSave}>保存</button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleCancel}
+                  title="关闭弹窗，不保存修改（Esc）"
+                >
+                  取消
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleSave}
+                  title="保存该按键的功能名称（Enter）"
+                >
+                  保存
+                </button>
               </div>
             </div>
           </div>

@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { BRAND, measureKeyboard, renderKeymapImage, resolveTitle } from '../utils/keymapImage'
 
-// 生成键位图弹窗：自定义标题 + 可选右下角署名，实时预览，支持复制到剪贴板与下载
-export default function ImageExportModal({ keymap, onClose }) {
+// 生成键位图弹窗：自定义标题 + 可选右下角署名 + 共享背景，实时预览，支持复制到剪贴板与下载
+export default function ImageExportModal({ keymap, background, onClose }) {
   const [title, setTitle] = useState('')       // 留空则用项目名兜底
   const [watermark, setWatermark] = useState(true)
   const [status, setStatus] = useState(null)   // { type: 'ok' | 'error', text }
@@ -20,12 +20,12 @@ export default function ImageExportModal({ keymap, onClose }) {
     return () => window.removeEventListener('resize', remeasure)
   }, [])
 
-  // 键位/标题/水印/尺寸变化即重绘预览（绘制耗时毫秒级，无需防抖）
+  // 键位/标题/水印/尺寸/背景变化即重绘预览（绘制耗时毫秒级，无需防抖）
   useEffect(() => {
-    const canvas = renderKeymapImage({ keymap, title: effectiveTitle, watermark, measured })
+    const canvas = renderKeymapImage({ keymap, title: effectiveTitle, watermark, measured, background })
     canvasRef.current = canvas
     if (previewRef.current) previewRef.current.replaceChildren(canvas)
-  }, [keymap, effectiveTitle, watermark, measured])
+  }, [keymap, effectiveTitle, watermark, measured, background])
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose() }
@@ -107,10 +107,24 @@ export default function ImageExportModal({ keymap, onClose }) {
         )}
 
         <div className="edit-actions">
-          <button className="btn btn-secondary" onClick={onClose}>关闭</button>
+          <button className="btn btn-secondary" onClick={onClose} title="关闭弹窗（Esc）">
+            关闭
+          </button>
           <div className="edit-actions-right">
-            <button className="btn btn-secondary" onClick={handleDownload}>下载 PNG</button>
-            <button className="btn btn-primary" onClick={handleCopy}>复制图片</button>
+            <button
+              className="btn btn-secondary"
+              onClick={handleDownload}
+              title="保存到本地，文件名为 keymap.png"
+            >
+              下载 PNG
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={handleCopy}
+              title="复制到剪贴板，可直接粘贴到聊天窗口或画图"
+            >
+              复制图片
+            </button>
           </div>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react'
 import * as api from '../api/client'
 
 const KeymapContext = createContext(null)
@@ -7,6 +7,10 @@ export function KeymapProvider({ children }) {
   const [keymap, setKeymap] = useState({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  // 键盘背景：屏幕键盘与「生成图片」共用同一张已加载图片（objectURL 由本组件统一释放）
+  const [background, setBackground] = useState(null)
+  const [backgroundName, setBackgroundName] = useState('')
+  const backgroundUrlRef = useRef('')
 
   useEffect(() => {
     api.getKeymap().then((data) => {
@@ -15,6 +19,45 @@ export function KeymapProvider({ children }) {
       }
     }).catch(() => {})
   }, [])
+
+  const releaseBackgroundUrl = useCallback(() => {
+    if (backgroundUrlRef.current) {
+      URL.revokeObjectURL(backgroundUrlRef.current)
+      backgroundUrlRef.current = ''
+    }
+  }, [])
+
+  // 卸载时释放背景图 objectURL
+  useEffect(() => releaseBackgroundUrl, [releaseBackgroundUrl])
+
+  // 选择背景图片：加载完成后才生效，保证 Canvas 绘制时有可用的图片对象
+  const chooseBackground = useCallback((file) => {
+    if (!file) return
+    setError(null)
+    if (!file.type || !file.type.startsWith('image/')) {
+      setError('请选择图片文件作为键盘背景')
+      return
+    }
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      releaseBackgroundUrl()
+      backgroundUrlRef.current = url
+      setBackground(img)
+      setBackgroundName(file.name)
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      setError('背景图片加载失败，请换一张图片')
+    }
+    img.src = url
+  }, [releaseBackgroundUrl])
+
+  const clearBackground = useCallback(() => {
+    releaseBackgroundUrl()
+    setBackground(null)
+    setBackgroundName('')
+  }, [releaseBackgroundUrl])
 
   const handleUpload = useCallback(async (file) => {
     setLoading(true)
@@ -121,6 +164,7 @@ export function KeymapProvider({ children }) {
       moveKey: handleMoveKey,
       export: handleExport,
       reset: handleReset,
+      background, backgroundName, chooseBackground, clearBackground,
     }}>
       {children}
     </KeymapContext.Provider>

@@ -32,9 +32,13 @@ async function getFileKey(file) {
 }
 
 export default function App() {
-  const { keymap, loading, error, upload, importKeymap, export: exportKeymap, reset } = useKeymap()
+  const {
+    keymap, loading, error, upload, importKeymap, export: exportKeymap, reset,
+    background, backgroundName, chooseBackground, clearBackground,
+  } = useKeymap()
   const [theme, toggleTheme] = useTheme()
   const fileInputRef = useRef(null)
+  const bgInputRef = useRef(null)
   const resetTimerRef = useRef(null)
   const dragDepthRef = useRef(0)
   const objectUrlsRef = useRef([])
@@ -226,7 +230,10 @@ export default function App() {
           {error && <div className="error-message">{error}</div>}
         </section>
 
-        <section className="keyboard-section">
+        <section
+          className={`keyboard-section${background ? ' has-bg' : ''}`}
+          style={background ? { backgroundImage: `url("${background.src}")` } : undefined}
+        >
           <div className="section-header">
             <h2>键盘布局</h2>
             <div className="section-actions">
@@ -235,16 +242,48 @@ export default function App() {
                 className={`btn ${confirmingReset ? 'btn-reset-armed' : 'btn-secondary'}`}
                 onClick={handleResetClick}
                 disabled={keyCount === 0}
+                title="清空全部按键绑定（需再点一次确认）"
               >
                 {confirmingReset ? '确认重置？' : '重置'}
               </button>
-              <button className="btn btn-primary" onClick={exportKeymap} disabled={keyCount === 0}>
+              {/* 背景图同时作用于屏幕键盘与生成图片（同一套规则与效果） */}
+              <input
+                ref={bgInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/webp,image/gif,image/bmp"
+                onChange={(e) => {
+                  chooseBackground(e.target.files[0])
+                  e.target.value = '' // 重置 value，允许重复选择同一文件
+                }}
+                hidden
+              />
+              <button
+                className="btn btn-teal"
+                onClick={() => bgInputRef.current?.click()}
+                title={background
+                  ? `当前背景：${backgroundName}（点击更换）`
+                  : '为键盘布局与生成图片设置同一张背景'}
+              >
+                {background ? '更换背景' : '选择背景'}
+              </button>
+              {background && (
+                <button className="link-btn" onClick={clearBackground} title="移除背景，恢复纯色键盘">
+                  移除
+                </button>
+              )}
+              <button
+                className="btn btn-primary"
+                onClick={exportKeymap}
+                disabled={keyCount === 0}
+                title="把当前键位导出为 keymap.json（可再次导入）"
+              >
                 导出 JSON
               </button>
               <button
                 className="btn btn-success"
                 onClick={() => setImageModalOpen(true)}
                 disabled={keyCount === 0}
+                title="按当前键盘生成键位图，可复制到剪贴板或下载 PNG"
               >
                 生成图片
               </button>
@@ -303,7 +342,11 @@ export default function App() {
       )}
 
       {imageModalOpen && (
-        <ImageExportModal keymap={keymap} onClose={() => setImageModalOpen(false)} />
+        <ImageExportModal
+          keymap={keymap}
+          background={background}
+          onClose={() => setImageModalOpen(false)}
+        />
       )}
     </div>
   )

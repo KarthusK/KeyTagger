@@ -28,6 +28,16 @@
   --warning: #b45309;
   --warning-soft: #fffbeb;
   --warning-border: #fcd34d;
+  /* 背景按钮用的青色系（与靛蓝主色、成功绿、次级灰区分） */
+  --teal: #0d9488;
+  --teal-hover: #0f766e;
+  /* 键盘背景效果令牌：屏幕端 CSS 与导出图 Canvas 共用同一套数值（改这里两侧同时生效） */
+  --bg-blur: 10px;        /* 虚化半径（键内与文字底带共用） */
+  --bg-scrim: 0.62;       /* 键面蒙层不透明度 */
+  --bg-plate-scrim: 0.78; /* 文字底带/面板蒙层不透明度（比键面更实，保证可读） */
+  --bg-radius: 12px;      /* 底带/面板圆角 */
+  --bg-scrim-rgb: 255, 255, 255;       /* 未绑定键与底带的蒙层基色（浅色主题） */
+  --bg-scrim-bound-rgb: 238, 242, 255; /* 已绑定键蒙层基色（浅色主题） */
   --key-bg: #ffffff;
   --key-bg-hover: #f3f4f6;
   --key-border: #e2e5ea;
@@ -64,6 +74,12 @@
   --warning: #fbbf24;
   --warning-soft: #2e2410;
   --warning-border: #6b5518;
+  /* 深色主题下青色提亮，配深色文字保证对比度 */
+  --teal: #2dd4bf;
+  --teal-hover: #5eead4;
+  /* 深色主题下蒙层基色改为深色，保证浅色文字依然可读 */
+  --bg-scrim-rgb: 15, 17, 21;
+  --bg-scrim-bound-rgb: 36, 40, 80;
   --key-bg: #1d2028;
   --key-bg-hover: #262a34;
   --key-border: #2c313c;
@@ -198,6 +214,18 @@ textarea {
 .btn-success:hover:not(:disabled) {
   background: var(--success-hover);
   border-color: var(--success-hover);
+}
+
+/* 背景按钮：青色实心，与靛蓝「导出 JSON」、绿色「生成图片」、灰色「重置」都能区分 */
+.btn-teal {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: var(--primary-contrast);
+}
+
+.btn-teal:hover:not(:disabled) {
+  background: var(--teal-hover);
+  border-color: var(--teal-hover);
 }
 
 .btn-danger-ghost {
@@ -579,6 +607,39 @@ textarea {
   background: var(--success-soft);
   border-color: var(--success-border);
   box-shadow: 0 0 0 2px var(--success-border) inset;
+}
+
+/* ========== 键盘背景（与导出图同一套规则：背景铺满整卡 / 键内虚化 + 蒙层） ========== */
+/* 背景铺满整张键盘卡片（含标题行、按钮行、提示行与卡片内边距） */
+.keyboard-section.has-bg {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* 标题行与提示行加磨砂底带：任意背景下文字与「移除」等透明按钮都可读 */
+.keyboard-section.has-bg .section-header,
+.keyboard-section.has-bg .keyboard-hint {
+  background: rgba(var(--bg-scrim-rgb), var(--bg-plate-scrim));
+  -webkit-backdrop-filter: blur(var(--bg-blur));
+  backdrop-filter: blur(var(--bg-blur));
+  border-radius: var(--bg-radius);
+  padding: 10px 14px;
+}
+
+/* 背景模式下键内改为「虚化 + 半透明蒙层」，文字保持原样 */
+.keyboard-section.has-bg .hg-button.hg-button {
+  background: rgba(var(--bg-scrim-rgb), var(--bg-scrim));
+  -webkit-backdrop-filter: blur(var(--bg-blur));
+  backdrop-filter: blur(var(--bg-blur));
+}
+
+.keyboard-section.has-bg .hg-key-has-function.hg-key-has-function {
+  background: rgba(var(--bg-scrim-bound-rgb), var(--bg-scrim));
+}
+
+.keyboard-section.has-bg .hg-button.hg-button:hover {
+  background: rgba(var(--bg-scrim-rgb), calc(var(--bg-scrim) + 0.16));
 }
 
 /* ========== 编辑弹窗 ========== */
