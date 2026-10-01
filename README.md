@@ -2,27 +2,18 @@
 
 > 通过截图识别并可视化编辑游戏键位设置的本地 Web 工具。
 
-KeyTagger 是一款轻量级开源工具：上传一张游戏键位设置界面的截图，自动通过 OCR 识别每个按键对应的功能名称，在标准 QWERTY 键盘上可视化展示，支持手动修正并导出为 JSON 配置文件。
+上传一张游戏键位设置界面的截图，自动通过 OCR 识别每个按键对应的功能名称，在标准 QWERTY 键盘上可视化展示；支持手动修正、JSON 导入导出，还能一键生成键位图片、为键盘自定义背景。所有处理均在本地完成。
 
 ## 核心功能
 
 | 功能 | 说明 |
 | ---- | ---- |
-| 📥 导入截图 | 点击或拖拽上传游戏键位设置界面截图（PNG / JPG / WebP / BMP） |
-| 🤖 自动识别 | 调用 RapidOCR 识别图片中的按键名称（如 `W`、`地图`）及坐标 |
-| 🧭 智能映射 | 根据坐标自动将识别文字映射到标准 QWERTY 键盘布局的对应按键 |
-| ⌨️ 可视化展示 | 使用 `react-simple-keyboard` 渲染键盘，每个按键上显示识别出的功能文本 |
-| ✏️ 手动修正 | 点击键盘按键弹出输入框，修改/添加功能名称（如将识别错误的 `M` 改为 `地图`） |
-| 💾 数据导出 | 一键将修改后的键位映射导出为 JSON 配置文件 |
-
-## 工作原理
-
-1. **上传截图**：用户上传游戏键位设置界面的截图。
-2. **OCR 识别**：后端调用 RapidOCR（PP-OCR 模型），返回所有文字的文本内容与边界框坐标 `(x, y, w, h)`。
-3. **坐标映射**：识别结果按 `y` 坐标分组为行（对应键盘的物理行），行内按 `x` 坐标排序，依次映射到标准 QWERTY 布局对应行的按键上（`config.py` 中定义了 58 个物理按键的 `(row, col)` 位置）。
-4. **可视化展示**：前端在键盘上展示每个按键的功能名称，有功能的按键高亮显示。
-5. **手动修正**：点击按键即可编辑功能名，修改实时同步到后端。
-6. **持久化导出**：将最终映射导出为 `keymap.json`。
+| 📥 导入截图 | 点击上传，或把文件拖到页面任意位置（PNG / JPG / WebP / BMP），同一文件自动去重 |
+| 🤖 自动识别 | 调用 RapidOCR 识别按键名称与坐标，显示本次识别的键位数；新键位覆盖旧绑定时给出覆盖明细 |
+| 🧭 智能映射 | 识别文字按行映射到 QWERTY 对应按键，内置常见误识纠错（如 `口`→D、`5`→S） |
+| ⌨️ 可视化编辑 | 点击按键编辑功能名、拖拽移动绑定；浅色 / 暗色主题可切换，可为键盘自定义背景图 |
+| 🖼️ 生成图片 | 将当前键位渲染为一张键位图（PNG）：可自定义标题与水印、附带背景虚化，支持下载或复制到剪贴板 |
+| 💾 JSON 导入导出 | 导出 `keymap.json` 备份，也可导入已有 JSON 覆盖合并到当前键位 |
 
 ## 快速开始
 
@@ -30,8 +21,8 @@ KeyTagger 是一款轻量级开源工具：上传一张游戏键位设置界面�
 
 | 版本 | 体积 | 环境要求 | 适合人群 |
 | ---- | ---- | -------- | -------- |
-| 完整版 `KeyTagger-windows-x64.zip` | ~117MB | 无 | 没装 Python 的普通用户 |
-| 精简版 `KeyTagger-lite.zip` | ~2MB | Python 3.10+ | 已装 Python、想快速下载的用户 |
+| 完整版 `KeyTagger-windows-x64.zip` | ~123MB | 无 | 没装 Python 的普通用户 |
+| 精简版 `KeyTagger-lite.zip` | ~0.1MB | Python 3.10+ | 已装 Python、想快速下载的用户 |
 
 ### 完整版（免安装）
 
@@ -55,15 +46,14 @@ pip install -r requirements.txt
 python start.py
 ```
 
-### 一键启动（源码运行）
+### 源码运行
 
 ```bash
+# 一键启动：检查/安装依赖 → 检查/构建前端 → 启动服务并自动打开浏览器
 python start.py
 ```
 
-脚本会自动完成：检查/安装后端依赖 → 检查/构建前端 → 启动服务 → 显示项目地址，浏览器访问 `http://localhost:8000`。
-
-### 手动启动
+或手动执行：
 
 ```bash
 # 1. 安装后端依赖
@@ -99,10 +89,12 @@ npm run dev
 | 方法 | 路径 | 说明 |
 | ---- | ---- | ---- |
 | `GET` | `/api/health` | 健康检查 |
-| `POST` | `/api/upload` | 上传截图，OCR 识别并映射到键盘按键，返回完整键位映射 |
+| `POST` | `/api/upload` | 上传截图，OCR 识别并映射到键盘按键，返回本次识别键数与覆盖明细 |
 | `GET` | `/api/keymap` | 获取当前所有按键映射 |
 | `PUT` | `/api/keymap` | 更新单个按键的功能名称 |
-| `POST` | `/api/export` | 导出键位映射为 JSON 文件 |
+| `POST` | `/api/keymap/move` | 将源按键的绑定移动到目标按键 |
+| `POST` | `/api/import` | 导入 JSON 键位文件，覆盖式合并到当前键位 |
+| `POST` | `/api/export` | 导出当前键位映射为 JSON 文件 |
 | `POST` | `/api/reset` | 重置所有按键映射 |
 
 ### 导出的 JSON 格式示例
@@ -110,9 +102,9 @@ npm run dev
 ```json
 {
   "KeyW": "前进",
-  "KeyA": "向左移动",
   "Space": "跳跃",
-  "MouseLeft": "开火"
+  "F3": "其他交互",
+  "Tab": "物品栏（切换）"
 }
 ```
 
@@ -122,23 +114,27 @@ npm run dev
 KeyTagger/
 ├── backend/                    # 后端（FastAPI + RapidOCR）
 │   ├── app.py                  # FastAPI 应用定义：健康检查、路由挂载、静态托管（MIME 修复）
-│   ├── routes.py               # API 路由层（/upload, /keymap, /export）
+│   ├── routes.py               # API 路由层（上传识别、键位增删改、JSON 导入导出）
 │   ├── ocr_service.py          # OCR 识别与坐标映射逻辑
-│   ├── keyboard_service.py     # 键位状态管理（增删改查）
-│   ├── config.py               # 全局配置（端口、QWERTY 布局、上传限制等）
+│   ├── keyboard_service.py     # 键位状态管理（内存单例，含导入覆盖合并）
+│   ├── config.py               # 全局配置（端口、QWERTY 布局、OCR 参数、混淆映射表）
 │   └── models.py               # Pydantic 数据模型
-├── frontend/                   # 前端（React + Vite）
+├── frontend/
 │   ├── src/
-│   │   ├── App.jsx             # 主界面：上传区 + 键盘展示区布局
+│   │   ├── App.jsx             # 主界面：上传区 / 键盘区 / 截图对照区，主题与背景入口
 │   │   ├── components/
-│   │   │   └── Keyboard.jsx    # 封装 react-simple-keyboard，处理渲染和点击编辑
+│   │   │   ├── Keyboard.jsx    # 屏幕键盘：渲染、点击编辑、拖拽移动绑定
+│   │   │   ├── ImageExportModal.jsx  # 生成图片弹窗：实时预览、标题/水印、下载与复制
+│   │   │   └── icons.jsx       # 内联 SVG 图标
+│   │   ├── store/
+│   │   │   └── keymapContext.jsx  # 全局状态：键位数据与背景图管理
+│   │   ├── utils/
+│   │   │   ├── keyLayout.js    # 键盘布局单一数据源（屏幕键盘与生成图片共用）
+│   │   │   ├── keymapImage.js  # 键位图 Canvas 绘制（几何计算与渲染）
+│   │   │   └── overwriteTooltip.js  # 覆盖明细提示格式化
 │   │   ├── api/
 │   │   │   └── client.js       # Axios 封装，对接后端接口
-│   │   ├── store/
-│   │   │   └── keymapContext.jsx  # React Context，全局管理键位数据
-│   │   └── main.jsx            # Vite 入口
-│   ├── index.html
-│   ├── package.json
+│   │   └── main.jsx            # React 入口
 │   └── vite.config.js          # 开发代理：/api → localhost:8000
 ├── start.py                    # 一键启动脚本（自动检查依赖并构建）
 ├── run_app.py                  # 服务启动器：端口预检 + 自动开浏览器（exe 打包入口）
@@ -159,13 +155,13 @@ KeyTagger/
 | ------ | ------ | ---- |
 | `PORT` | `8000` | 服务端口 |
 | `MAX_UPLOAD_SIZE` | `10MB` | 上传图片大小限制 |
-| `QWERTY_LAYOUT` | - | 标准 QWERTY 键盘 58 键布局定义 |
+| `QWERTY_LAYOUT` | - | 标准 QWERTY 键盘 71 键布局定义 |
+| `OCR_DET_LIMIT_SIDE_LEN` | `1216` | OCR 检测阶段最小边长，勿调小（会漏检单字母键位） |
 
 ## 技术栈
 
 - **后端**：Python 3.10+ · FastAPI · Uvicorn · RapidOCR（onnxruntime）· Pydantic
-- **前端**：React 18 · Vite · Axios · react-simple-keyboard
-- **运行方式**：后端提供静态前端资源，入口为 `run_app.py`（`start.py` 检查环境后委托它启动），在 `http://127.0.0.1:8000` 提供服务
+- **前端**：React 18 · Vite · Axios · react-simple-keyboard（键位图导出为原生 Canvas 实现，零额外依赖）
 
 ## 常见问题
 
@@ -181,6 +177,10 @@ A: 识别精度与截图质量相关，建议使用高清截图。识别结果�
 
 A: 源码运行时可修改 `backend/config.py` 中的 `PORT` 配置更换端口；免安装版固定使用 8000 端口，请先关闭占用该端口的程序。
 
+**Q: 我的截图、背景图会被上传吗？**
+
+A: 不会。键位截图仅用于本地 OCR 识别，识别后立即删除；背景图与生成的键位图片全程在浏览器内处理（Canvas 渲染），不会经过服务器。
+
 ## 打包发布（开发者）
 
 在装有 Python 与 Node.js 的机器上执行：
@@ -190,8 +190,8 @@ python build_release.py
 ```
 
 一次产出两个发布包：
-- **完整版**：PyInstaller 打包 → `dist/KeyTagger/` 目录和 `KeyTagger-windows-x64.zip`（约 117MB，自带运行环境）
-- **精简版**：`KeyTagger-lite.zip`（约 2MB，源码 + 前端构建产物，用户自备 Python）
+- **完整版**：PyInstaller 打包 → `dist/KeyTagger/` 目录和 `KeyTagger-windows-x64.zip`（约 123MB，自带运行环境）
+- **精简版**：`KeyTagger-lite.zip`（约 0.1MB，源码 + 前端构建产物，用户自备 Python）
 
 打包配置见 `KeyTagger.spec`（需携带 RapidOCR 内置模型与前端构建产物）。
 

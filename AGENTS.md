@@ -21,7 +21,7 @@ cd frontend && npm run dev    # Vite 开发服务器（端口 3000，代理 /api
 ## 必须注意的坑
 
 - **从仓库根目录运行 Python**：后端用 `backend.` 包前缀导入，入口脚本都在根目录（`run_app.py` 的脚本目录自动进 `sys.path`，`start.py`/`test_ocr_mapping.py` 显式插入），无 `__init__.py`（依赖隐式命名空间包）。
-- **OCR 用 RapidOCR（onnxruntime）**：`requirements.txt` 锁定 `rapidocr_onnxruntime==1.4.4`，PP-OCR 模型随包内置、无需联网下载。输出格式为 `[[box, text, score], ...]`（与 PaddleOCR 的 `[box, (text, score)]` 不同）。
+- **OCR 用 RapidOCR（onnxruntime）**：`requirements.txt` 要求 `rapidocr_onnxruntime>=1.4.4`，PP-OCR 模型随包内置、无需联网下载。输出格式为 `[[box, text, score], ...]`（与 PaddleOCR 的 `[box, (text, score)]` 不同）。
 - **`OCR_DET_LIMIT_SIDE_LEN=1216` 勿改小**（`config.py`）：检测阶段最小边长，键位截图里单个字母很小，默认 736 会漏检（曾导致 D/C/E/F3 全部丢失），1216 后单字符检出率大幅提升。
 - **打包路径双分支**（`config.py`）：`sys.frozen` 时只读资源取 `sys._MEIPASS`（前端产物、OCR 模型），可写数据（uploads）放 exe 同级目录；开发模式维持 `backend/uploads`。新增文件路径一律走这两个常量。
 - **Windows MIME 修复勿删**：`backend/app.py` 的 `MimeFixedStaticFiles` 把 `.js` 强制为 `application/javascript`。Windows 注册表把 `.js` 标为 `text/plain`，若还原为普通 `StaticFiles`，页面会因严格 MIME 检查白屏。
@@ -32,7 +32,7 @@ cd frontend && npm run dev    # Vite 开发服务器（端口 3000，代理 /api
 
 ## 架构要点
 
-- **键位数据是内存单例**：`keyboard_service`（`backend/keyboard_service.py`）进程内维护 58 键映射，重启即丢失，无持久化。
+- **键位数据是内存单例**：`keyboard_service`（`backend/keyboard_service.py`）进程内维护 71 键映射，重启即丢失，无持久化。
 - **双处布局必须同步**：后端 `config.py` 的 `QWERTY_LAYOUT`（按键名用浏览器 `KeyboardEvent.code`，如 `KeyW`）与前端 `frontend/src/utils/keyLayout.js` 的 `KEY_MAP`（`react-simple-keyboard` 按钮字符串 → 按键名，屏幕键盘与生成图片共用该模块）一一对应，改一边必须同步另一边。
 - **OCR 识别与映射分离**：`ocr_service.py::recognize` 只做引擎调用（RapidOCR → `OCRResult` 列表），`map_to_keys` 做映射（按 y 分组为行、行内按 x 排序，行内首个可匹配文本是按键标签、其余拼接为功能名），四级匹配依赖 `config.py` 的三张混淆映射表（字形/数字字母/复合键），与 OCR 引擎解耦——换引擎只动 `recognize`。
 - **测试基线**：`test_data/` 内 png+同名 json（期望格式 `{"功能名": "键标签"}`），`test_ocr_mapping.py` 对比断言（忽略空格与全/半角括号差异）。
