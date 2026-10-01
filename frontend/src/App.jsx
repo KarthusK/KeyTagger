@@ -199,21 +199,21 @@ export default function App() {
             className={`upload-zone ${dragActive ? 'drop-active' : ''} ${loading ? 'uploading' : ''}`}
             onClick={() => !loading && fileInputRef.current?.click()}
           >
-            {loading ? (
-              <>
-                <div className="spinner" />
-                <span className="upload-text">{importing ? '正在导入中...' : '正在识别中...'}</span>
-              </>
-            ) : (
-              <>
-                <span className="upload-icon-sm">
-                  <UploadIcon size={20} />
-                </span>
-                <span className="upload-text">点击或拖拽截图或键位文件到此处上传</span>
-                <span className="upload-hint">PNG / JPG / WebP / BMP 截图 · .json 键位文件 · 可在页面任意位置拖放</span>
-                <span className="upload-hint">导入 JSON 会覆盖对应的键位（其余保持不变） · 仅在本地处理</span>
-              </>
-            )}
+            {/* 空闲态与加载态叠放在同一网格单元：识别中隐藏空闲态但保留占位，上传区尺寸不变 */}
+            <div className="upload-idle">
+              <span className="upload-icon-sm">
+                <UploadIcon size={20} />
+              </span>
+              <span className="upload-text">点击或拖拽截图或键位文件到此处上传</span>
+              <span className="upload-hints">
+                <span className="upload-hint">支持 PNG / JPG / WebP / BMP 截图与 .json 键位文件 · 可拖到页面任意位置</span>
+                <span className="upload-hint">导入 JSON 会覆盖对应键位 · 仅在本地处理</span>
+              </span>
+            </div>
+            <div className="upload-loading">
+              <div className="spinner" />
+              <span className="upload-text">{importing ? '正在导入中...' : '正在识别中...'}</span>
+            </div>
           </div>
           {notice && <div className="notice-message" role="status">{notice.text}</div>}
           {error && <div className="error-message">{error}</div>}

@@ -213,14 +213,12 @@ body {
 }
 
 .upload-zone {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 4px 10px;
+  display: grid;
+  grid-template-columns: 1fr;
+  place-items: center;
   border: 1.5px dashed var(--border-strong);
   border-radius: 12px;
-  padding: 13px 20px;
+  padding: 18px 20px;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
   background: var(--card);
@@ -243,6 +241,7 @@ body {
   color: var(--primary);
   display: flex;
   align-items: center;
+  margin-bottom: 2px;
 }
 
 .upload-text {
@@ -251,9 +250,44 @@ body {
   color: var(--text);
 }
 
+/* 两行提示自成一组，紧贴在标题下方 */
+.upload-hints {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+}
+
 .upload-hint {
   font-size: 12px;
   color: var(--text-muted);
+}
+
+/* 空闲态与加载态叠放在同一网格单元：容器高度恒等于较高者（空闲态），识别中尺寸不跳变 */
+.upload-idle {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 加载态保持横向一行：spinner + 文案 */
+.upload-loading {
+  grid-area: 1 / 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 识别中：空闲态内容不可见但保留占位，撑住上传区高度 */
+.upload-zone.uploading .upload-idle {
+  visibility: hidden;
+}
+
+/* 空闲时移出加载块，避免 spinner 空转 */
+.upload-zone:not(.uploading) .upload-loading {
+  display: none;
 }
 
 .spinner {
