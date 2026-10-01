@@ -282,6 +282,17 @@ body {
   font-size: 13px;
 }
 
+/* 重复文件替换记录时的临时成功提示（约 3 秒后自动消失） */
+.notice-message {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: var(--primary-soft);
+  border: 1px solid var(--primary-border);
+  border-radius: 10px;
+  color: var(--primary);
+  font-size: 13px;
+}
+
 /* ========== 截图对照（每图一行） ========== */
 .shots-section {
   margin-top: 20px;
@@ -311,6 +322,12 @@ body {
 
 .shot-row:hover {
   border-color: var(--primary-border);
+  background: var(--primary-soft);
+}
+
+/* 同一文件被重新识别/导入、记录刚被刷新时的短暂高亮 */
+.shot-row-fresh {
+  border-color: var(--primary);
   background: var(--primary-soft);
 }
 

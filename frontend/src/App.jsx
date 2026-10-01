@@ -12,6 +12,23 @@ function useTheme() {
   return [theme, () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))]
 }
 
+// 记录去重键：优先用文件内容哈希（SHA-256）识别同一文件，改名/复制后的相同图片也能归并；
+// crypto.subtle 不可用（非安全上下文，如局域网 http 访问）时退化为 文件名+大小
+async function getFileKey(file) {
+  if (file && crypto?.subtle) {
+    try {
+      const buf = await file.arrayBuffer()
+      const digest = await crypto.subtle.digest('SHA-256', buf)
+      return Array.from(new Uint8Array(digest))
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('')
+    } catch (e) {
+      // 读取/摘要失败时走兜底键，保证去重仍生效
+    }
+  }
+  return `${file?.name || ''}|${file?.size || 0}`
+}
+
 export default function App() {
   const { keymap, loading, error, upload, importKeymap, export: exportKeymap, reset } = useKeymap()
   const [theme, toggleTheme] = useTheme()
@@ -25,12 +42,15 @@ export default function App() {
   const [uploads, setUploads] = useState([]) // 本次会话上传过的截图 / 导入过的 JSON，最新在前
   const [previewUrl, setPreviewUrl] = useState(null) // lightbox 当前展示的图
   const [confirmingReset, setConfirmingReset] = useState(false)
+  const [notice, setNotice] = useState(null) // 重复文件替换记录时的临时提示 { text, key }
+  const noticeTimerRef = useRef(null)
 
   const keyCount = Object.values(keymap).filter((m) => m.function).length
 
-  // 卸载时统一释放 objectURL
+  // 卸载时统一释放 objectURL 并清理提示计时器
   useEffect(() => () => {
     clearTimeout(resetTimerRef.current)
+    clearTimeout(noticeTimerRef.current)
     objectUrlsRef.current.forEach((u) => URL.revokeObjectURL(u))
   }, [])
 
@@ -43,13 +63,46 @@ export default function App() {
     const count = isJson ? await importKeymap(file) : await upload(file)
     setImporting(false)
     if (count === null) return
+    const key = await getFileKey(file)
+    addRecord(file, isJson ? 'json' : 'image', count, key)
+  }
+
+  // 重复文件替换记录时的临时提示：显示文案并高亮对应行约 3 秒后自动消失
+  const showRefreshNotice = (text, key) => {
+    setNotice({ text, key })
+    clearTimeout(noticeTimerRef.current)
+    noticeTimerRef.current = setTimeout(() => {
+      setNotice(null)
+      setUploads((prev) => prev.map((it) => (
+        it.key === key && it.refreshed ? { ...it, refreshed: false } : it
+      )))
+    }, 3000)
+  }
+
+  // 同一文件（内容哈希相同）重复上传时替换原记录：移到最前、刷新名称/按键数/缩略图，释放旧 objectURL，
+  // 并给出「已重新识别/导入」提示 + 短暂高亮被刷新的行
+  const addRecord = (file, kind, count, key) => {
     const id = ++recordIdRef.current
-    if (isJson) {
-      setUploads((prev) => [{ id, name: file.name, kind: 'json', count }, ...prev])
-    } else {
-      const url = URL.createObjectURL(file)
-      objectUrlsRef.current.push(url)
-      setUploads((prev) => [{ id, name: file.name, url, kind: 'image', count }, ...prev])
+    const replaced = uploads.some((it) => it.key === key)
+    setUploads((prev) => {
+      const old = prev.find((it) => it.key === key)
+      if (old?.url) {
+        URL.revokeObjectURL(old.url)
+        objectUrlsRef.current = objectUrlsRef.current.filter((u) => u !== old.url)
+      }
+      const rec = { id, key, name: file.name, kind, count, refreshed: replaced }
+      if (kind === 'image') {
+        const url = URL.createObjectURL(file)
+        objectUrlsRef.current.push(url)
+        rec.url = url
+      }
+      return [rec, ...prev.filter((it) => it.key !== key)]
+    })
+    if (replaced) {
+      const text = kind === 'json'
+        ? `已重新导入「${file.name}」，记录已刷新`
+        : `已重新识别「${file.name}」，记录已刷新`
+      showRefreshNotice(text, key)
     }
   }
 
@@ -162,6 +215,7 @@ export default function App() {
               </>
             )}
           </div>
+          {notice && <div className="notice-message" role="status">{notice.text}</div>}
           {error && <div className="error-message">{error}</div>}
         </section>
 
@@ -195,8 +249,8 @@ export default function App() {
             <div className="shots-list">
               {uploads.map((item) => (
                 <div
-                  key={item.id}
-                  className="shot-row"
+                  key={item.key}
+                  className={`shot-row ${item.refreshed ? 'shot-row-fresh' : ''}`}
                   onClick={() => item.kind === 'image' && setPreviewUrl(item.url)}
                   title={item.kind === 'image' ? '点击查看原图' : 'JSON 键位文件'}
                 >
