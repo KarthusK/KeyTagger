@@ -1,94 +1,148 @@
-/* ========== 设计令牌（浅色默认 / [data-theme=dark] 暗色） ========== */
-:root {
+/* ============================================================
+   KeyTagger 设计令牌
+   主题：印刷键帽 / 机壳面板
+   - 已绑定键 = 印了字的键帽（实心松绿 + 浅色印字）
+   - 未绑定键 = 空白塑料键帽（浅色 + 深色刻字）
+   全站只有一个强调色（松绿），语义色仅用于错误与覆盖提示。
+   深色主题 = [data-theme='dark']。
+   注意：屏幕端与导出图片（utils/keymapImage.js 的 PALETTE_VARS）共用下列令牌，
+   改名字必须同时改 PALETTE_VARS，否则导出图会掉回兜底色。
+   ============================================================ */
+:root,
+/* [data-theme='light'] 让局部容器可强制回到浅色（生成图片弹窗的导出配色隔离用） */
+[data-theme='light'] {
   color-scheme: light;
-  /* 全站唯一字体栈：中文字体优先，Windows/macOS 下中英文都由同一字体渲染，避免混排导致字重不一致 */
-  --font-sans: 'Microsoft YaHei', 'PingFang SC', 'Hiragino Sans GB',
+
+  /* 字体：正文/标题中文字体优先（同一字体渲染中英文，避免混排字重不一致）；
+     键帽刻字与数字用系统内置窄体，离线可用，绝不引外部字体 */
+  --font-sans: 'PingFang SC', 'Microsoft YaHei', 'Hiragino Sans GB',
     'Noto Sans CJK SC', 'Source Han Sans SC', 'Segoe UI', system-ui,
     -apple-system, Roboto, Arial, sans-serif;
-  --bg: #f7f8fa;
-  --card: #ffffff;
-  --border: #e5e7eb;
-  --border-strong: #d1d5db;
-  --text: #111827;
-  --text-secondary: #6b7280;
-  --text-muted: #9ca3af;
-  --primary: #4f46e5;
-  --primary-hover: #4338ca;
-  --primary-soft: #eef2ff;
-  --primary-border: #c7d2fe;
-  --primary-contrast: #ffffff;
-  --danger: #dc2626;
-  --danger-hover: #b91c1c;
-  --danger-soft: #fef2f2;
-  --danger-border: #fecaca;
-  --success: #16a34a;
-  --success-hover: #15803d;
-  --success-soft: #dcfce7;
-  --success-border: #86efac;
-  --warning: #b45309;
-  --warning-soft: #fffbeb;
-  --warning-border: #fcd34d;
-  /* 背景按钮用的青色系（与靛蓝主色、成功绿、次级灰区分） */
-  --teal: #0d9488;
-  --teal-hover: #0f766e;
-  /* 键盘背景效果令牌：屏幕端 CSS 与导出图 Canvas 共用同一套数值（改这里两侧同时生效） */
-  --bg-blur: 10px;        /* 虚化半径（键内与文字底带共用） */
-  --bg-scrim: 0.62;       /* 键面蒙层不透明度 */
-  --bg-plate-scrim: 0.78; /* 文字底带/面板蒙层不透明度（比键面更实，保证可读） */
-  --bg-radius: 12px;      /* 底带/面板圆角 */
-  --bg-scrim-rgb: 255, 255, 255;       /* 未绑定键与底带的蒙层基色（浅色主题） */
-  --bg-scrim-bound-rgb: 238, 242, 255; /* 已绑定键蒙层基色（浅色主题） */
-  --key-bg: #ffffff;
-  --key-bg-hover: #f3f4f6;
-  --key-border: #e2e5ea;
-  --key-side: #d3d7de;
-  --key-side-hover: #c6cad2;
-  --key-text: #374151;
-  --overlay: rgba(17, 24, 39, 0.55);
-  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04);
-  --shadow-pop: 0 12px 36px rgba(16, 24, 40, 0.2);
+  --font-legend: 'Bahnschrift', 'DIN Alternate', 'Roboto Condensed',
+    'Segoe UI Variable Display', 'PingFang SC', 'Microsoft YaHei', system-ui,
+    sans-serif;
+
+  /* 表面：分三层——桌面(底) / 面板(卡片) / 机壳(键盘外壳)
+     键帽必须比机壳亮才能读成「凸起的实物」，这是整套视觉成立的前提 */
+  --bg: #e9eae6;
+  --plate: #fcfcfa;
+  --case: #dfe2dd; /* 键盘机壳：比键帽暗一档，键帽因此浮起 */
+  --case-edge: #c6cac3; /* 机壳底部实边 */
+  --line: #d3d7d1;
+  --line-strong: #7c827b; /* 非文本边界（输入框/上传槽边框）：对 bg 3.3:1、对 plate 3.8:1、对 case 3.0:1，均 ≥3:1 */
+
+  /* 文字 */
+  --ink: #161a1d; /* 14.5:1 on --bg */
+  --ink-2: #4a5250; /* 6.7:1 */
+  --muted: #585f5c; /* 4.8:1 on --bg / 5.0:1 on --case（旧值 #9ca3af 仅 2.4:1，已废弃） */
+
+  /* 唯一强调色：松绿 */
+  --pine: #1e4b42;
+  --pine-hover: #163a33;
+  --pine-soft: #e3ede8;
+  --pine-line: #9dbfb4;
+  --pine-contrast: #f6fbf8; /* 松绿上的文字，9.4:1 */
+
+  /* 键帽 */
+  --cap: #ffffff;
+  --cap-hover: #f4f5f2;
+  --cap-border: #b6bcb3; /* 键帽 1px 描边：描边 + 侧边合起来勾出轮廓 */
+  --cap-edge: #8b9287; /* 键帽 3px 侧边，对白键帽 3.2:1，是「厚度」的主要来源 */
+  --cap-legend: #23282a; /* 空白键帽刻字，14.9:1 */
+  --cap-printed: #1e4b42; /* 已绑定键帽面 */
+  --cap-printed-hover: #24594e;
+  --cap-printed-edge: #14302a;
+  --cap-line: #9dbfb4; /* 已绑定键帽描边 */
+  --ink-on-cap: #eaf2ed; /* 印字，8.6:1 */
+  --tag-on-cap: #a5e3cc; /* 右下角原键位标签，≥5.7:1 */
+  --cap-sheen: rgba(255, 255, 255, 0.75); /* 顶面高光 */
+
+  /* 语义 */
+  --danger: #b3261e;
+  --danger-hover: #8e1c16;
+  --danger-soft: #f7e8e5;
+  --danger-line: #e3b4ad;
+  --warning: #7a4e00;
+  --warning-soft: #fdf3e0;
+  --warning-line: #e3c08a;
+
+  /* 遮罩与投影 */
+  --overlay: rgba(18, 22, 21, 0.55);
+  --shadow-plate: 0 1px 2px rgba(18, 22, 21, 0.05);
+  --shadow-pop: 0 16px 40px rgba(18, 22, 21, 0.22);
+
+  /* 键盘背景效果：屏幕端 CSS 与导出图 Canvas 共用同一套数值（改这里两侧同时生效） */
+  --bg-blur: 10px; /* 虚化半径 */
+  --bg-scrim: 0.78; /* 未绑定键蒙层不透明度 */
+  --bg-scrim-bound: 0.88; /* 已绑定键蒙层不透明度（更实，保证印字可读） */
+  --bg-plate-scrim: 0.86; /* 文字底带/面板蒙层 */
+  --bg-radius: 10px;
+  --bg-scrim-rgb: 252, 252, 250;
+  --bg-scrim-bound-rgb: 30, 75, 66;
+
+  /* 圆角按对象分级，杜绝一刀切 */
+  --r-cap: 6px;
+  --r-control: 8px;
+  --r-plate: 14px;
+
+  /* 字阶 */
+  --t-wordmark: 22px;
+  --t-section: 16px;
+  --t-body: 14px;
+  --t-label: 13px;
+  --t-note: 12.5px;
+  --t-cap: 12px;
 }
 
 [data-theme='dark'] {
   color-scheme: dark;
-  --bg: #0f1115;
-  --card: #171a21;
-  --border: #262a33;
-  --border-strong: #333845;
-  --text: #e5e7eb;
-  --text-secondary: #9ca3af;
-  --text-muted: #6b7280;
-  --primary: #818cf8;
-  --primary-hover: #a5b0fc;
-  --primary-soft: #242850;
-  --primary-border: #474d82;
-  --primary-contrast: #101223;
-  --danger: #f87171;
-  --danger-hover: #fca5a5;
-  --danger-soft: #32242b;
-  --danger-border: #713d41;
-  --success: #4ade80;
-  --success-hover: #86efac;
-  --success-soft: #1e352e;
-  --success-border: #2e724c;
-  --warning: #fbbf24;
-  --warning-soft: #2e2410;
-  --warning-border: #6b5518;
-  /* 深色主题下青色提亮，配深色文字保证对比度 */
-  --teal: #2dd4bf;
-  --teal-hover: #5eead4;
-  /* 深色主题下蒙层基色改为深色，保证浅色文字依然可读 */
-  --bg-scrim-rgb: 15, 17, 21;
-  --bg-scrim-bound-rgb: 36, 40, 80;
-  --key-bg: #1d2028;
-  --key-bg-hover: #262a34;
-  --key-border: #2c313c;
-  --key-side: #101319;
-  --key-side-hover: #0c0e13;
-  --key-text: #d1d5db;
+
+  --bg: #131716;
+  --plate: #1b211f;
+  --case: #0e1211; /* 深色主题：机壳比键帽更暗，键帽同样是「亮起的实物」 */
+  --case-edge: #000000;
+  --line: #2c3330;
+  --line-strong: #7a847d; /* 深色下非文本边界同样保持在 3:1 以上 */
+
+  --ink: #e8ebe7; /* 14.0:1 on --bg */
+  --ink-2: #aab3ad; /* 7.8:1 */
+  --muted: #8b948e; /* 5.8:1 */
+  --pine: #7fcbae; /* 深色主题下提亮为薄荷绿，配深墨色文字 */
+  --pine-hover: #9bdcc2;
+  --pine-soft: #21362f;
+  --pine-line: #3f6a5b;
+  --pine-contrast: #10201b; /* 8.9:1 */
+
+  --cap: #232927;
+  --cap-hover: #2a312e;
+  --cap-border: #3d453f;
+  --cap-edge: #6f7c72; /* 深色下侧边提亮：对键帽 3.4:1、对机壳 4.3:1，键帽厚度边界清晰 */
+  --cap-legend: #e8ebe7;
+  --cap-printed: #2e5b4e;
+  --cap-printed-hover: #356955;
+  --cap-printed-edge: #1c3a31;
+  --cap-line: #4d8574;
+  --ink-on-cap: #ecf6f1;
+  --tag-on-cap: #a5e3cc;
+  --cap-sheen: rgba(255, 255, 255, 0.06);
+
+  --danger: #f08e82;
+  --danger-hover: #f7ada2;
+  --danger-soft: #331d1a;
+  --danger-line: #713b34;
+  --warning: #e3b25c;
+  --warning-soft: #2e2415;
+  --warning-line: #6b5330;
+
   --overlay: rgba(0, 0, 0, 0.66);
-  --shadow-card: none;
-  --shadow-pop: 0 16px 48px rgba(0, 0, 0, 0.55);
+  --shadow-plate: none;
+  --shadow-pop: 0 16px 48px rgba(0, 0, 0, 0.6);
+
+  --bg-scrim: 0.82;
+  --bg-scrim-bound: 0.9;
+  --bg-plate-scrim: 0.9;
+  --bg-scrim-rgb: 19, 23, 22;
+  --bg-scrim-bound-rgb: 46, 91, 78;
 }
 
 /* ========== 基础 ========== */
@@ -101,9 +155,13 @@
 body {
   font-family: var(--font-sans);
   background: var(--bg);
-  color: var(--text);
+  color: var(--ink);
+  font-size: var(--t-body);
+  line-height: 1.55;
   min-height: 100vh;
-  transition: background 0.2s;
+  -webkit-font-smoothing: antialiased;
+  /* 只过渡颜色：旧写法只过渡 background，切换主题时文字瞬变、底色渐变，闪跳 */
+  transition: background-color 0.18s ease, color 0.18s ease;
 }
 
 /* 表单控件默认不继承字体，会让按钮/输入框落到 UA 默认字体（与页面文字不同款） */
@@ -112,248 +170,293 @@ input,
 select,
 textarea {
   font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+/* 全站统一焦点环：键盘操作必须看得见 */
+:focus-visible {
+  outline: 2px solid var(--pine);
+  outline-offset: 2px;
 }
 
 .app {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 24px 20px 40px;
 }
 
-/* ========== 头部 ========== */
-.header {
+/* 仅供读屏的标题（视觉上由版式本身表达，不重复展示文字） */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ========== 页头 ========== */
+.site-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  margin-bottom: 20px;
+  gap: 16px;
+  margin-bottom: 18px;
 }
 
-.header h1 {
-  font-size: 20px;
+.wordmark {
+  font-family: var(--font-legend);
+  font-size: var(--t-wordmark);
   font-weight: 700;
-  color: var(--text);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+  color: var(--ink);
 }
 
-.header h1 .accent {
-  color: var(--primary);
+.wordmark .accent {
+  color: var(--pine);
 }
 
-.subtitle {
-  color: var(--text-muted);
-  font-size: 13px;
-  margin-top: 2px;
+.tagline {
+  color: var(--ink-2);
+  font-size: var(--t-label);
+  margin-top: 4px;
 }
 
+/* 图标按钮 = 一颗小键帽 */
 .icon-btn {
   width: 34px;
   height: 34px;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--text-secondary);
+  border-radius: var(--r-control);
+  border: 1px solid var(--cap-border);
+  border-bottom: 2px solid var(--cap-edge);
+  background: var(--cap);
+  color: var(--ink-2);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background-color 0.14s, border-color 0.14s, color 0.14s;
 }
 
 .icon-btn:hover {
-  color: var(--text);
-  border-color: var(--border-strong);
-  background: var(--key-bg-hover);
+  color: var(--ink);
+  background: var(--cap-hover);
+  border-color: var(--line-strong);
+}
+
+.icon-btn:active {
+  border-bottom-width: 1px;
 }
 
 /* ========== 按钮 ========== */
+/* 通用键帽形按钮：1px 描边 + 2px 底边，按下靠底边收窄表现下沉 */
 .btn {
-  padding: 8px 16px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--cap-border);
+  border-bottom-width: 2px;
+  border-radius: var(--r-control);
+  background: var(--cap);
+  color: var(--ink);
+  font-size: var(--t-label);
+  font-weight: 500;
+  white-space: nowrap;
   cursor: pointer;
-  transition: all 0.15s;
-  font-weight: 400;
-  background: none;
-  color: var(--text);
+  transition: background-color 0.14s, border-color 0.14s, color 0.14s;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--cap-hover);
+  border-color: var(--line-strong);
+}
+
+.btn:active:not(:disabled) {
+  border-bottom-width: 1px;
 }
 
 .btn:disabled {
-  opacity: 0.4;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
+/* 主操作：唯一的实心松绿按钮（生成图片） */
 .btn-primary {
-  background: var(--primary);
-  color: var(--primary-contrast);
+  background: var(--pine);
+  border-color: var(--pine);
+  border-bottom-color: var(--pine-hover);
+  color: var(--pine-contrast);
+  font-weight: 600;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--primary-hover);
+  background: var(--pine-hover);
+  border-color: var(--pine-hover);
+  color: var(--pine-contrast);
 }
 
-.btn-secondary {
-  background: var(--card);
-  color: var(--text-secondary);
-  border-color: var(--border-strong);
+/* 次要操作（重置 / 背景 / 导出 JSON）：沿用默认键帽形，靠 .btn 本身表达 */
+.btn-key {
+  color: var(--ink-2);
 }
 
-.btn-secondary:hover:not(:disabled) {
-  color: var(--text);
-  background: var(--key-bg-hover);
-  border-color: var(--text-muted);
+.btn-key:hover:not(:disabled) {
+  color: var(--ink);
 }
 
-/* 生成图片：用成功色与「导出 JSON」的主色区分开 */
-.btn-success {
-  background: var(--success);
-  border-color: var(--success);
-  color: var(--primary-contrast);
-}
-
-.btn-success:hover:not(:disabled) {
-  background: var(--success-hover);
-  border-color: var(--success-hover);
-}
-
-/* 背景按钮：青色实心，与靛蓝「导出 JSON」、绿色「生成图片」、灰色「重置」都能区分 */
-.btn-teal {
-  background: var(--teal);
-  border-color: var(--teal);
-  color: var(--primary-contrast);
-}
-
-.btn-teal:hover:not(:disabled) {
-  background: var(--teal-hover);
-  border-color: var(--teal-hover);
-}
-
-.btn-danger-ghost {
+/* 文字按钮：不留边框，用于低权重的「移除」类操作 */
+.btn-quiet {
+  border-color: transparent;
   background: transparent;
-  color: var(--danger);
+  color: var(--ink-2);
+  min-height: 30px;
+  padding: 0 8px;
+  font-weight: 400;
 }
 
-.btn-danger-ghost:hover:not(:disabled) {
-  background: var(--danger-soft);
-  border-color: var(--danger-border);
+.btn-quiet:hover:not(:disabled) {
+  background: var(--pine-soft);
+  border-color: transparent;
+  color: var(--pine);
 }
 
-/* 重置二次确认态 */
-.btn-reset-armed {
+/* 重置二次确认态（暗色主题旧值白字配 #f87171 只有 2.8:1，此处改用 --pine-contrast 同款深字） */
+.btn-danger {
   background: var(--danger);
   border-color: var(--danger);
+  border-bottom-color: var(--danger-hover);
+  color: #fff;
+  font-weight: 600;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--danger-hover);
+  border-color: var(--danger-hover);
   color: #fff;
 }
 
-.btn-reset-armed:hover:not(:disabled) {
-  background: var(--danger-hover);
-  border-color: var(--danger-hover);
-}
-
-.link-btn {
-  background: none;
-  border: none;
-  color: var(--primary);
-  font-size: 13px;
-  cursor: pointer;
-  padding: 5px 8px;
-  border-radius: 6px;
+/* 弹窗里的清空绑定：红色文字 + 无底色，不抢主操作 */
+.btn-danger-quiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--danger);
   font-weight: 400;
-  white-space: nowrap;
 }
 
-.link-btn:hover {
-  background: var(--primary-soft);
+.btn-danger-quiet:hover:not(:disabled) {
+  background: var(--danger-soft);
+  border-color: var(--danger-line);
 }
 
-/* ========== 上传区（常驻，支持全窗口拖入） ========== */
-.upload-section {
-  margin-bottom: 20px;
-}
-
-.upload-zone {
+/* ========== 上传槽（全窗口拖拽 + 点击选择） ========== */
+/* 空闲态与加载态叠放在同一网格单元：识别中隐藏空闲态但保留占位，上传槽尺寸不变 */
+.upload-slot {
+  width: 100%;
   display: grid;
   grid-template-columns: 1fr;
-  place-items: center;
-  border: 1.5px dashed var(--border-strong);
-  border-radius: 12px;
+  align-content: center;
+  min-height: 96px;
   padding: 18px 20px;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--r-plate);
+  background: var(--plate);
+  color: var(--ink);
+  font-size: var(--t-body);
+  text-align: left;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-  background: var(--card);
-  text-align: center;
+  transition: border-color 0.16s, background-color 0.16s, min-height 0.16s,
+    padding 0.16s;
 }
 
-.upload-zone:hover,
-.upload-zone.drop-active {
-  border-color: var(--primary);
-  background: var(--primary-soft);
+/* 已有识别结果后收成横条，把版面让给键盘 */
+.upload-slot.is-compact {
+  min-height: 56px;
+  padding: 10px 18px;
+  border-style: solid;
+  border-color: var(--line);
 }
 
-.upload-zone.uploading {
+.upload-slot:hover:not(:disabled),
+.upload-slot.is-drop-active {
+  border-color: var(--pine);
+  background: var(--pine-soft);
+}
+
+.upload-slot:disabled {
   cursor: default;
   border-style: solid;
-  border-color: var(--border);
+  border-color: var(--line);
 }
 
-.upload-icon-sm {
-  color: var(--primary);
+.slot-icon {
   display: flex;
   align-items: center;
-  margin-bottom: 2px;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: var(--r-control);
+  background: var(--pine-soft);
+  color: var(--pine);
 }
 
-.upload-text {
-  font-size: 14px;
-  font-weight: 400;
-  color: var(--text);
+.upload-slot.is-compact .slot-icon {
+  width: 26px;
+  height: 26px;
 }
 
-/* 两行提示自成一组，紧贴在标题下方 */
-.upload-hints {
+.slot-body {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin-top: 2px;
+  min-width: 0;
 }
 
-.upload-hint {
-  font-size: 12px;
-  color: var(--text-muted);
+.slot-title {
+  font-size: var(--t-body);
+  font-weight: 500;
+  color: var(--ink);
 }
 
-/* 空闲态与加载态叠放在同一网格单元：容器高度恒等于较高者（空闲态），识别中尺寸不跳变 */
-.upload-idle {
-  grid-area: 1 / 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
+.slot-meta {
+  font-size: var(--t-note);
+  color: var(--muted);
 }
 
-/* 加载态保持横向一行：spinner + 文案 */
-.upload-loading {
+/* 空闲态与加载态叠放在同一网格单元：识别中隐藏空闲态但保留占位，上传槽尺寸不变 */
+.slot-idle,
+.slot-busy {
   grid-area: 1 / 1;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 12px;
+  min-width: 0;
 }
 
-/* 识别中：空闲态内容不可见但保留占位，撑住上传区高度 */
-.upload-zone.uploading .upload-idle {
+.upload-slot.is-busy .slot-idle {
   visibility: hidden;
 }
 
-/* 空闲时移出加载块，避免 spinner 空转 */
-.upload-zone:not(.uploading) .upload-loading {
+.upload-slot:not(.is-busy) .slot-busy {
   display: none;
 }
 
 .spinner {
   width: 18px;
   height: 18px;
-  border: 2px solid var(--border);
-  border-top-color: var(--primary);
+  border: 2px solid var(--line);
+  border-top-color: var(--pine);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   flex-shrink: 0;
@@ -365,261 +468,318 @@ textarea {
   }
 }
 
-.error-message {
+/* ========== 提示条 ========== */
+.alert {
   margin-top: 10px;
-  padding: 10px 14px;
+  padding: 9px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  font-size: var(--t-label);
+}
+
+.alert-error {
   background: var(--danger-soft);
-  border: 1px solid var(--danger-border);
-  border-radius: 10px;
+  border-color: var(--danger-line);
   color: var(--danger);
-  font-size: 13px;
 }
 
-/* 重复文件替换记录时的临时成功提示（约 3 秒后自动消失） */
-.notice-message {
-  margin-top: 10px;
-  padding: 10px 14px;
-  background: var(--primary-soft);
-  border: 1px solid var(--primary-border);
-  border-radius: 10px;
-  color: var(--primary);
-  font-size: 13px;
+.alert-notice {
+  background: var(--pine-soft);
+  border-color: var(--pine-line);
+  color: var(--pine);
 }
 
-/* ========== 截图对照（每图一行） ========== */
-.shots-section {
-  margin-top: 20px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px 20px;
-  box-shadow: var(--shadow-card);
+/* ========== 机壳面板（全站唯一的「有厚度」容器） ========== */
+.plate {
+  background: var(--plate);
+  border: 1px solid var(--line);
+  border-radius: var(--r-plate);
+  padding: 18px 20px 20px;
+  box-shadow: var(--shadow-plate);
 }
 
-.shots-list {
+/* 纵向节奏由容器统一给出，避免各区块自己写 margin 互相覆盖 */
+.app main > * + * {
+  margin-top: 16px;
+}
+
+/* 键盘是一台设备：深一档的机壳 + 底部实边，键帽因此读成凸起的实物 */
+.plate-board {
+  background: var(--case);
+  border: 1px solid var(--case-edge);
+  border-bottom: 3px solid var(--case-edge);
+  padding: 16px 18px 18px;
+}
+
+.plate-head {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  margin-bottom: 14px;
+}
+
+.plate-title {
+  font-size: var(--t-section);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+/* 计数贴在标题右侧，与按钮组分占两侧 */
+.plate-leading {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.plate-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
-.shot-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 12px 8px 8px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  cursor: zoom-in;
-  transition: border-color 0.15s, background 0.15s;
-}
-
-.shot-row:hover {
-  border-color: var(--primary-border);
-  background: var(--primary-soft);
-}
-
-/* 同一文件被重新识别/导入、记录刚被刷新时的短暂高亮 */
-.shot-row-fresh {
-  border-color: var(--primary);
-  background: var(--primary-soft);
-}
-
-.shot-thumb {
-  width: 72px;
-  height: 46px;
-  object-fit: cover;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  flex-shrink: 0;
-  display: block;
-  background: var(--key-bg);
-}
-
-/* JSON 键位文件条目的缩略占位（无原图可预览） */
-.shot-thumb-json {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--primary);
-  cursor: default;
-}
-
-.shot-name {
-  flex: 1;
-  min-width: 0;
-  font-size: 13px;
-  font-weight: 400;
-  color: var(--text);
+/* 已设置 N / 共 71 键：数字用窄体 + 等宽数字，切换时不跳字宽 */
+.key-tally {
+  font-family: var(--font-legend);
+  font-size: var(--t-note);
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
   white-space: nowrap;
+}
+
+.key-tally b {
+  font-weight: 700;
+  font-size: var(--t-label);
+  color: var(--pine);
+}
+
+/* 背景图状态胶囊：替代原先散落的「更换背景 / 移除」两个文案 */
+.bg-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 210px;
+  padding: 2px 2px 2px 10px;
+  border: 1px solid var(--pine-line);
+  border-radius: 999px;
+  background: var(--pine-soft);
+  color: var(--pine);
+  font-size: var(--t-note);
+}
+
+.bg-chip-name {
   overflow: hidden;
+  white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-.shot-count {
-  flex-shrink: 0;
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.shot-count b {
-  color: var(--primary);
-  font-weight: 700;
-  font-size: 13px;
-}
-
-/* 本次上传/导入覆盖掉的已有绑定数（键位相同但文字不同才计入） */
-.shot-overwrite {
-  flex-shrink: 0;
-  padding: 2px 8px;
-  border: 1px solid var(--warning-border);
-  border-radius: 999px;
-  background: var(--warning-soft);
-  color: var(--warning);
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.shot-overwrite b {
-  font-weight: 700;
-}
-
-/* ========== 键盘卡片 ========== */
-.keyboard-section {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: var(--shadow-card);
-  overflow-x: auto;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 14px;
-  gap: 12px;
-}
-
-.section-header h2 {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.section-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.key-count {
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.keyboard-hint {
-  text-align: center;
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-top: 12px;
-}
-
-/* ========== 键帽 ========== */
-.simple-keyboard.simple-keyboard {
-  font-family: var(--font-sans); /* 覆盖 react-simple-keyboard 默认的 Helvetica/Arial 字体栈 */
-  max-width: 1150px;
-  margin: 0 auto;
-  background: transparent;
-}
-
-.simple-keyboard .hg-button.hg-button {
-  height: 54px;
-  font-size: 13px;
-  font-weight: 400;
+.bg-chip-x {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--key-bg);
-  border: 1px solid var(--key-border);
-  border-bottom-width: 3px;
-  border-radius: 6px;
-  color: var(--key-text);
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--pine);
+  font-size: 13px;
+  line-height: 1;
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s, transform 0.08s,
-    border-bottom-width 0.08s;
-  overflow: hidden;
-  padding: 4px 6px 7px;
-  position: relative;
-  line-height: 1.25;
 }
 
-.simple-keyboard .hg-button.hg-button:hover {
-  background: var(--key-bg-hover);
-  transform: translateY(1px);
-  border-bottom-width: 2px;
+.bg-chip-x:hover {
+  background: var(--pine);
+  color: var(--pine-contrast);
 }
 
-.simple-keyboard .hg-button.hg-button:active {
-  transform: translateY(2px);
-  border-bottom-width: 1px;
+.hint {
+  margin-top: 12px;
+  text-align: center;
+  font-size: var(--t-note);
+  color: var(--muted);
 }
 
-/* 已绑定键：主内容 = 功能名，右下角标 = 原键帽标签 */
-.simple-keyboard .hg-key-has-function.hg-key-has-function {
-  background: var(--primary-soft);
-  border-color: var(--primary-border);
-  color: var(--text);
+/* 窄屏才需要提「左右滑动」：键盘 max-width 1150px，视口小于约 1180px 时才会横滚，
+   更宽的屏幕上键盘完整可见，说这话反而多余 */
+.scroll-tip {
+  display: none;
+}
+
+@media (max-width: 1180px) {
+  .scroll-tip {
+    display: inline;
+  }
+}
+
+/* 空键盘时的引导句（替代「0 个按键 + 一排灰按钮」）
+   放在 .plate-head 下方，与计数同色系，可读性 ≥4.7:1 */
+.board-empty {
+  margin-bottom: 14px;
+  font-size: var(--t-label);
+  color: var(--ink-2);
+}
+
+.board-empty b {
+  color: var(--pine);
   font-weight: 600;
+}
+
+/* ========== 键盘 ========== */
+/* 只让键盘本身横向滚动：标题行与提示行不再被一起拖出视口 */
+.board-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding-bottom: 2px;
+}
+
+.simple-keyboard.simple-keyboard {
+  font-family: var(--font-sans); /* 覆盖库默认的 Helvetica/Arial 字体栈 */
+  max-width: 1150px;
+  /* 窄屏关键：键盘保持可读的最小宽度并在容器内横滚，
+     否则每键被压到 18px，中文功能名会一字一行竖排（实测 390px 下正是如此） */
+  min-width: 720px;
+  margin: 0 auto;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+}
+
+.plate-board .hg-theme-default {
+  background: transparent;
+}
+
+/* 键帽：空白塑料键（未绑定）
+   物理感来自三件事——比机壳亮的帽面、1px 冷色描边、3px 更深的侧边；顶面一条高光收光 */
+.plate-board .hg-button.hg-button {
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 6px 8px;
+  border: 1px solid var(--cap-border);
+  border-bottom: 3px solid var(--cap-edge);
+  border-radius: var(--r-cap);
+  background: var(--cap);
+  box-shadow: inset 0 1px 0 var(--cap-sheen), inset 0 -6px 8px -6px rgba(22, 26, 29, 0.18);
+  color: var(--cap-legend);
+  font-family: var(--font-legend);
+  font-size: var(--t-note);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+  appearance: none;
+  /* 只过渡颜色与位移：旧写法改 border-bottom-width 会让 71 个键反复重排 */
+  transition: background-color 0.12s, border-color 0.12s, transform 0.08s;
+}
+
+.plate-board .hg-button.hg-button:hover {
+  background: var(--cap-hover);
+  transform: translateY(1px);
+}
+
+.plate-board .hg-button.hg-button:active {
+  transform: translateY(2px);
+}
+
+/* 键盘内焦点环用内描边：避免被滚动容器裁掉 */
+.plate-board .hg-button.hg-button:focus-visible {
+  outline: 2px solid var(--pine);
+  outline-offset: -3px;
+}
+
+/* 已绑定键：印了字的键帽（实心松绿 + 浅色印字），右下角角标是原键位 */
+.plate-board .hg-key-has-function.hg-key-has-function {
+  background: var(--cap-printed);
+  border-color: var(--cap-line);
+  border-bottom-color: var(--cap-printed-edge);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  color: var(--ink-on-cap);
   cursor: grab;
 }
 
-.simple-keyboard .hg-key-fn {
+.plate-board .hg-key-has-function.hg-key-has-function:hover {
+  background: var(--cap-printed-hover);
+}
+
+/* 功能名：主信息，比未绑定键的刻字略小但更重，两行截断（全文见 title） */
+.plate-board .hg-key-fn {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
   max-width: 100%;
-  font-size: 11px;
+  padding-bottom: 9px; /* 给右下角角标让位，避免长文本压住标签 */
+  font-family: var(--font-sans);
+  font-size: var(--t-cap);
   font-weight: 600;
-  color: var(--text);
-  line-height: 1.3;
+  line-height: 1.25;
   text-align: center;
   overflow-wrap: anywhere;
+  color: var(--ink-on-cap);
 }
 
-.simple-keyboard .hg-key-tag {
+/* 原键位标签：不再是全站最小号（旧值 9px + 0.85 透明） */
+.plate-board .hg-key-tag {
   position: absolute;
   right: 4px;
   bottom: 3px;
-  font-size: 9px;
+  font-family: var(--font-legend);
+  font-size: 10px;
   font-weight: 600;
   line-height: 1;
-  color: var(--primary);
-  opacity: 0.85;
+  color: var(--tag-on-cap);
 }
 
-/* 拖拽态 */
-.simple-keyboard .hg-dragging {
+/* 拖拽中：源键半透明，落点用松绿内描边（不再借用 success 语义） */
+.plate-board .hg-dragging {
   opacity: 0.4;
 }
 
-.simple-keyboard .hg-drop-target {
-  background: var(--success-soft);
-  border-color: var(--success-border);
-  box-shadow: 0 0 0 2px var(--success-border) inset;
+.plate-board .hg-drop-target {
+  background: var(--pine-soft);
+  border-color: var(--pine);
+  box-shadow: inset 0 0 0 2px var(--pine);
 }
 
-/* ========== 键盘背景（与导出图同一套规则：背景铺满整卡 / 键内虚化 + 蒙层） ========== */
-/* 背景铺满整张键盘卡片（含标题行、按钮行、提示行与卡片内边距） */
-.keyboard-section.has-bg {
+/* 本批写入的键做一次性「印刷上色」：只用 opacity/filter，
+   不动 transform 与尺寸，避免污染 measureKeyboard 的实测结果 */
+.plate-board .hg-key-fresh {
+  animation: print-in 0.34s ease-out both;
+}
+
+@keyframes print-in {
+  from {
+    opacity: 0.25;
+    filter: blur(2px) saturate(0.4);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0) saturate(1);
+  }
+}
+
+/* ========== 键盘背景（与导出图同一套规则） ========== */
+.plate-board.has-bg {
+  position: relative;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
 }
 
-/* 标题行与提示行加磨砂底带：任意背景下文字与「移除」等透明按钮都可读 */
-.keyboard-section.has-bg .section-header,
-.keyboard-section.has-bg .keyboard-hint {
+/* 标题行与提示行加磨砂底带：任意背景下文字与透明按钮都可读 */
+.plate-board.has-bg .plate-head,
+.plate-board.has-bg .hint,
+.plate-board.has-bg .board-empty {
   background: rgba(var(--bg-scrim-rgb), var(--bg-plate-scrim));
   -webkit-backdrop-filter: blur(var(--bg-blur));
   backdrop-filter: blur(var(--bg-blur));
@@ -627,40 +787,175 @@ textarea {
   padding: 10px 14px;
 }
 
-/* 背景模式下键内改为「虚化 + 半透明蒙层」，文字保持原样 */
-.keyboard-section.has-bg .hg-button.hg-button {
+.plate-board.has-bg .hint {
+  margin-top: 12px;
+}
+
+/* 背景模式下键内改为「虚化 + 半透明蒙层」，文字保持原样。
+   这里刻意保留「每键一层」的虚化（与导出图逐键虚化的观感严格一致），
+   代价是合成层数量随键数增长；桌面端 71 键实测无掉帧，故不改单层模糊方案。 */
+.plate-board.has-bg .hg-button.hg-button {
   background: rgba(var(--bg-scrim-rgb), var(--bg-scrim));
   -webkit-backdrop-filter: blur(var(--bg-blur));
   backdrop-filter: blur(var(--bg-blur));
+  box-shadow: none;
 }
 
-.keyboard-section.has-bg .hg-key-has-function.hg-key-has-function {
-  background: rgba(var(--bg-scrim-bound-rgb), var(--bg-scrim));
+.plate-board.has-bg .hg-key-has-function.hg-key-has-function {
+  background: rgba(var(--bg-scrim-bound-rgb), var(--bg-scrim-bound));
 }
 
-.keyboard-section.has-bg .hg-button.hg-button:hover {
-  background: rgba(var(--bg-scrim-rgb), calc(var(--bg-scrim) + 0.16));
+.plate-board.has-bg .hg-button.hg-button:hover {
+  background: rgba(var(--bg-scrim-rgb), calc(var(--bg-scrim) + 0.12));
 }
 
-/* ========== 编辑弹窗 ========== */
-.edit-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--overlay);
+.plate-board.has-bg .hg-key-has-function.hg-key-has-function:hover {
+  background: rgba(var(--bg-scrim-bound-rgb), calc(var(--bg-scrim-bound) + 0.06));
+}
+
+/* ========== 本次记录（面板内平铺行，不套小卡片） ========== */
+.records {
+  background: var(--plate);
+  border: 1px solid var(--line);
+  border-radius: var(--r-plate);
+  padding: 16px 20px 8px;
+  box-shadow: var(--shadow-plate);
+}
+
+.records-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.records-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.record {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  font-size: var(--t-label);
+  cursor: zoom-in;
+  transition: background-color 0.14s;
+}
+
+.record:first-child {
+  border-top: none;
+}
+
+.record.is-static {
+  cursor: default;
+}
+
+.record:hover {
+  background: var(--pine-soft);
+}
+
+.record:focus-visible {
+  outline: 2px solid var(--pine);
+  outline-offset: -2px;
+}
+
+/* 同一文件刚被重新识别/导入：短暂左侧松绿标记 + 染色 */
+.record.is-fresh {
+  background: var(--pine-soft);
+  box-shadow: inset 3px 0 0 var(--pine);
+}
+
+.record-thumb {
+  width: 64px;
+  height: 40px;
+  flex-shrink: 0;
+  object-fit: cover;
+  border-radius: var(--r-cap);
+  border: 1px solid var(--line);
+  background: var(--cap);
+  display: block;
+}
+
+/* JSON 记录的缩略占位（无原图可预览） */
+.record-json {
   display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--pine);
+  background: var(--pine-soft);
+  border-color: var(--pine-line);
+}
+
+.record-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--font-legend);
+  font-size: var(--t-label);
+  letter-spacing: 0.01em;
+}
+
+.record-count {
+  flex-shrink: 0;
+  font-size: var(--t-note);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.record-count b {
+  font-size: var(--t-label);
+  font-weight: 700;
+  color: var(--pine);
+}
+
+/* 本次覆盖掉的已有绑定数 */
+.record-over {
+  flex-shrink: 0;
+  padding: 1px 9px;
+  border: 1px solid var(--warning-line);
+  border-radius: 999px;
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: var(--t-note);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.record-over b {
+  font-weight: 700;
+}
+
+/* ========== 弹层通用 ========== */
+.modal-layer {
+  position: fixed;
+  inset: 0;
   z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: var(--overlay);
   animation: fade 0.15s ease;
 }
 
-.edit-modal {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 24px;
-  width: 380px;
+.modal {
+  width: 100%;
+  background: var(--plate);
+  border: 1px solid var(--line);
+  border-radius: var(--r-plate);
   box-shadow: var(--shadow-pop);
+  padding: 22px 24px 20px;
   animation: pop 0.18s ease;
 }
 
@@ -672,69 +967,129 @@ textarea {
 
 @keyframes pop {
   from {
-    transform: scale(0.94);
+    transform: scale(0.97);
     opacity: 0;
   }
 }
 
-.edit-modal h3 {
-  font-size: 17px;
-  margin-bottom: 4px;
+.modal-title {
   display: flex;
   align-items: center;
   gap: 8px;
+  font-size: var(--t-section);
+  font-weight: 600;
+  color: var(--ink);
 }
 
-.edit-key-badge {
+/* 当前按键的键帽形标记 */
+.key-badge {
   display: inline-flex;
+  min-width: 30px;
+  justify-content: center;
   padding: 2px 8px;
-  border-radius: 6px;
-  background: var(--primary-soft);
-  color: var(--primary);
-  font-size: 12px;
+  border: 1px solid var(--cap-line);
+  border-bottom-width: 2px;
+  border-radius: var(--r-cap);
+  background: var(--pine-soft);
+  color: var(--pine);
+  font-family: var(--font-legend);
+  font-size: var(--t-note);
   font-weight: 700;
 }
 
-.edit-hint {
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin-bottom: 14px;
+.modal-hint {
+  margin: 4px 0 16px;
+  font-size: var(--t-label);
+  color: var(--ink-2);
 }
 
-.edit-modal input {
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-label {
+  font-size: var(--t-label);
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.field-hint {
+  font-size: var(--t-note);
+  color: var(--muted);
+}
+
+.text-input {
   width: 100%;
-  padding: 11px 12px;
-  border: 1px solid var(--border-strong);
-  border-radius: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-control);
+  background: var(--plate);
+  color: var(--ink);
   font-size: 15px;
+  transition: border-color 0.14s, box-shadow 0.14s;
+}
+
+.text-input::placeholder {
+  color: var(--muted);
+}
+
+.text-input:focus {
   outline: none;
-  background: var(--card);
-  color: var(--text);
-  transition: border-color 0.15s, box-shadow 0.15s;
+  border-color: var(--pine);
+  box-shadow: 0 0 0 3px var(--pine-soft);
 }
 
-.edit-modal input:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-soft);
+.text-input:focus-visible {
+  outline: 2px solid var(--pine);
+  outline-offset: 1px;
 }
 
-.edit-actions {
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--t-label);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.check input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--pine);
+  cursor: pointer;
+}
+
+.modal-foot {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   margin-top: 18px;
 }
 
-.edit-actions-right {
+.modal-foot-right {
   display: flex;
+  align-items: center;
   gap: 8px;
   margin-left: auto;
 }
 
+/* 编辑弹窗 */
+.modal-edit {
+  max-width: 380px;
+}
+
+.modal-edit .field {
+  margin-bottom: 0;
+}
+
 /* ========== 生成图片弹窗 ========== */
-.image-modal {
-  width: 720px;
-  max-width: 94vw;
+.modal-image {
+  max-width: 720px;
 }
 
 .image-form {
@@ -744,53 +1099,32 @@ textarea {
   margin-bottom: 14px;
 }
 
-.image-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.image-field-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.image-field-hint {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.image-check {
+/* 水印复选与「图片配色」并排：一个是内容选项，一个是渲染选项 */
+.image-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--text-secondary);
-  cursor: pointer;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
 }
 
-/* 复选框不受 .edit-modal input 的整宽输入框样式影响 */
-.image-check input[type='checkbox'] {
-  width: auto;
-  padding: 0;
-  margin: 0;
-  accent-color: var(--primary);
-  cursor: pointer;
+.image-row .btn {
+  min-height: 32px;
+  font-size: var(--t-note);
 }
 
-/* 预览区底色跟随主题：导出图配色已随主题切换，留白边也保持一致 */
-.image-preview {
+/* 预览区底色跟随导出配色：容器自带 data-theme，Canvas 从中解析令牌 */
+.preview {
   max-height: 52vh;
   overflow: auto;
   padding: 8px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  background: var(--plate);
+  cursor: zoom-in;
 }
 
-/* 预览适应容器宽、整图可见；点击进放大层看完整内容（见 ImageExportModal 的 lightbox） */
-.image-preview canvas {
+.preview canvas {
   display: block;
   max-width: 100%;
   height: auto;
@@ -798,16 +1132,16 @@ textarea {
   cursor: zoom-in;
 }
 
-/* ========== 截图预览大图 ========== */
+/* ========== 大图预览 ========== */
 .lightbox {
   position: fixed;
   inset: 0;
-  background: var(--overlay);
+  z-index: 1100;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1100;
   padding: 24px;
+  background: var(--overlay);
   cursor: zoom-out;
   animation: fade 0.15s ease;
 }
@@ -815,7 +1149,102 @@ textarea {
 .lightbox img {
   max-width: min(1100px, 94vw);
   max-height: 88vh;
-  border-radius: 8px;
+  border-radius: var(--r-control);
   box-shadow: var(--shadow-pop);
-  background: var(--card);
+  background: var(--plate);
+}
+
+/* ========== 响应式 ========== */
+@media (max-width: 900px) {
+  .plate-actions {
+    width: 100%;
+  }
+
+  /* 窄屏下按钮至少两列并排，避免挤成一条不可点的细缝；
+     主操作（生成图片）单独占满一行，层级不丢 */
+  .plate-actions .btn {
+    flex: 1 1 calc(50% - 8px);
+  }
+
+  .plate-actions .btn-primary {
+    flex-basis: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .app {
+    padding: 16px 14px 32px;
+  }
+
+  .plate,
+  .records {
+    padding: 14px 14px 16px;
+  }
+
+  .plate-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .plate-actions {
+    gap: 8px;
+  }
+
+  .upload-slot {
+    min-height: 84px;
+    padding: 14px;
+  }
+
+  .upload-slot.is-compact {
+    min-height: 52px;
+  }
+
+  .slot-body {
+    gap: 0;
+  }
+
+  /* 手机端只留主操作，隐藏次要按钮文案的换行压力 */
+  .btn {
+    min-height: 38px;
+    padding: 0 12px;
+  }
+
+  .record-count {
+    display: none; /* 窄屏优先保证文件名与覆盖徽标可见 */
+  }
+
+  .modal {
+    padding: 18px 16px 16px;
+  }
+
+  .modal-foot {
+    flex-wrap: wrap;
+  }
+
+  .modal-foot-right {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .modal-foot-right .btn {
+    flex: 1;
+  }
+}
+
+/* ========== 无障碍：尊重减少动效 ========== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* 位置变化类动效直接归零，颜色/透明度仍保留可读反馈 */
+  .plate-board .hg-button.hg-button:hover,
+  .plate-board .hg-button.hg-button:active {
+    transform: none;
+  }
 }

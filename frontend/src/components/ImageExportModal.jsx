@@ -3,15 +3,22 @@ import { BRAND, measureKeyboard, renderKeymapImage, resolveTitle, SCALE } from '
 import { SunIcon, MoonIcon } from './icons'
 
 // 生成键位图弹窗：自定义标题 + 可选右下角署名 + 共享背景，实时预览，支持复制到剪贴板与下载
-// theme 仅作为重绘依赖：切换浅色/深色主题时，导出图配色随之刷新（配色由 Canvas 读 CSS 变量取得）
-export default function ImageExportModal({ keymap, background, theme, onToggleTheme, onClose }) {
+// 「图片配色」是弹窗内的独立状态：只影响预览与导出的图片，不改动全站主题。
+// 机制与全站主题一致——配色由 Canvas 读取 preview 容器上的 data-theme 决定（见 paletteRoot）。
+export default function ImageExportModal({ keymap, background, onClose }) {
   const [title, setTitle] = useState('')       // 留空则用项目名兜底
   const [watermark, setWatermark] = useState(true)
   const [status, setStatus] = useState(null)   // { type: 'ok' | 'error', text }
   const [measured, setMeasured] = useState(null) // 屏幕键盘实测尺寸，用于同比例复刻
   const [zoom, setZoom] = useState(null)       // 放大层：{ src, width }，width 为逻辑宽
+  // 导出配色：初值跟随当前全站主题，之后仅在本弹窗内变化
+  const [exportTheme, setExportTheme] = useState(
+    () => (document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'),
+  )
   const previewRef = useRef(null)
   const canvasRef = useRef(null)
+  const modalRef = useRef(null)
+  const restoreFocusRef = useRef(null)
 
   const effectiveTitle = resolveTitle(title)
 
@@ -23,7 +30,7 @@ export default function ImageExportModal({ keymap, background, theme, onToggleTh
     return () => window.removeEventListener('resize', remeasure)
   }, [])
 
-  // 键位/标题/水印/尺寸/背景/主题变化即重绘预览（绘制耗时毫秒级，无需防抖）
+  // 键位/标题/水印/尺寸/背景/导出配色变化即重绘预览（绘制耗时毫秒级，无需防抖）
   // 配色从预览容器的 data-theme 解析（见 JSX），不依赖全局主题何时写入 <html>，避免慢一拍
   useEffect(() => {
     const canvas = renderKeymapImage({
@@ -36,7 +43,20 @@ export default function ImageExportModal({ keymap, background, theme, onToggleTh
     })
     canvasRef.current = canvas
     if (previewRef.current) previewRef.current.replaceChildren(canvas)
-  }, [keymap, effectiveTitle, watermark, measured, background, theme])
+  }, [keymap, effectiveTitle, watermark, measured, background, exportTheme])
+
+  // 关闭后把焦点还给打开弹窗的按钮
+  useEffect(() => {
+    restoreFocusRef.current = document.activeElement
+    const input = modalRef.current?.querySelector('input')
+    if (input) input.focus()
+    return () => {
+      const target = restoreFocusRef.current
+      if (target && document.contains(target) && typeof target.focus === 'function') {
+        target.focus()
+      }
+    }
+  }, [])
 
   // Esc 分层：放大层打开时先关放大层，否则关弹窗
   useEffect(() => {
@@ -70,9 +90,9 @@ export default function ImageExportModal({ keymap, background, theme, onToggleTh
       const blob = await toBlob()
       if (!blob) throw new Error('canvas toBlob failed')
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
-      setStatus({ type: 'ok', text: '已复制到剪贴板' })
+      setStatus({ type: 'ok', text: '已复制到剪贴板，可直接粘贴' })
     } catch (e) {
-      setStatus({ type: 'error', text: '当前环境不支持复制到剪贴板，请使用「下载 PNG」' })
+      setStatus({ type: 'error', text: '当前环境不支持复制到剪贴板，请改用「下载 PNG」' })
     }
   }, [toBlob])
 
@@ -92,74 +112,109 @@ export default function ImageExportModal({ keymap, background, theme, onToggleTh
     setStatus({ type: 'ok', text: '已开始下载 keymap.png' })
   }, [toBlob])
 
+  const dark = exportTheme === 'dark'
+
   return (
     <>
-      <div className="edit-overlay" onClick={onClose}>
-        <div className="edit-modal image-modal" onClick={(e) => e.stopPropagation()}>
-          <h3>生成图片</h3>
-          <p className="edit-hint">按当前键盘生成键位图，可复制到剪贴板或下载 PNG</p>
+      <div className="modal-layer" onClick={onClose}>
+        <div
+          className="modal modal-image"
+          ref={modalRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="export-title"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => {
+            if (e.key !== 'Tab') return
+            const focusables = e.currentTarget.querySelectorAll(
+              'button, input, [tabindex]:not([tabindex="-1"])',
+            )
+            if (!focusables.length) return
+            const first = focusables[0]
+            const last = focusables[focusables.length - 1]
+            if (e.shiftKey && document.activeElement === first) {
+              e.preventDefault()
+              last.focus()
+            } else if (!e.shiftKey && document.activeElement === last) {
+              e.preventDefault()
+              first.focus()
+            }
+          }}
+        >
+          <h3 className="modal-title" id="export-title">生成图片</h3>
+          <p className="modal-hint">按当前键盘生成键位图，可复制到剪贴板或下载 PNG</p>
 
           <div className="image-form">
-            <label className="image-field">
-              <span className="image-field-label">图片标题</span>
+            <label className="field">
+              <span className="field-label">图片标题</span>
               <input
+                className="text-input"
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder={BRAND.name}
-                autoFocus
               />
-              <span className="image-field-hint">留空则默认使用项目名 {BRAND.name}</span>
+              <span className="field-hint">留空则使用项目名 {BRAND.name}</span>
             </label>
-            <label className="image-check">
-              <input
-                type="checkbox"
-                checked={watermark}
-                onChange={(e) => setWatermark(e.target.checked)}
-              />
-              <span>附带水印（{BRAND.name} · {BRAND.url}）</span>
-            </label>
+            <div className="image-row">
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={watermark}
+                  onChange={(e) => setWatermark(e.target.checked)}
+                />
+                <span>附带署名（{BRAND.name} · {BRAND.url}）</span>
+              </label>
+              {/* 只改导出图的配色，不影响全站主题 */}
+              <button
+                type="button"
+                className="btn btn-key"
+                onClick={() => setExportTheme(dark ? 'light' : 'dark')}
+                aria-pressed={dark}
+                title="只切换这张图的配色，全站主题保持不变"
+              >
+                {dark ? <SunIcon size={15} /> : <MoonIcon size={15} />}
+                图片配色：{dark ? '深色' : '浅色'}
+              </button>
+            </div>
           </div>
 
-          {/* data-theme 直接声明在预览容器上：配色只取决于这里的主题，不受全局主题写入时机影响 */}
+          {/* data-theme 直接声明在预览容器上：配色只取决于这里的值，不受全站主题写入时机影响 */}
           <div
-            className="image-preview"
+            className="preview"
             ref={previewRef}
-            data-theme={theme}
+            data-theme={exportTheme}
             onClick={openZoom}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                openZoom()
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            aria-label="放大查看生成的键位图"
             title="点击放大查看"
           />
 
           {status && (
-            <div className={status.type === 'ok' ? 'notice-message' : 'error-message'} role="status">
+            <div
+              className={status.type === 'ok' ? 'alert alert-notice' : 'alert alert-error'}
+              role={status.type === 'ok' ? 'status' : 'alert'}
+            >
               {status.text}
             </div>
           )}
 
-          <div className="edit-actions">
-            <button className="btn btn-secondary" onClick={onClose} title="关闭弹窗（Esc）">
+          <div className="modal-foot">
+            <button className="btn btn-key" onClick={onClose} title="关闭弹窗（Esc）">
               关闭
             </button>
-            <div className="edit-actions-right">
-              <button
-                className="icon-btn"
-                onClick={onToggleTheme}
-                title={theme === 'dark' ? '切换到浅色主题（导出图配色随之切换）' : '切换到深色主题（导出图配色随之切换）'}
-              >
-                {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={handleDownload}
-                title="保存到本地，文件名为 keymap.png"
-              >
+            <div className="modal-foot-right">
+              <button className="btn btn-key" onClick={handleDownload} title="保存到本地，文件名为 keymap.png">
                 下载 PNG
               </button>
-              <button
-                className="btn btn-primary"
-                onClick={handleCopy}
-                title="复制到剪贴板，可直接粘贴到聊天窗口或画图"
-              >
+              <button className="btn btn-primary" onClick={handleCopy} title="复制到剪贴板，可直接粘贴到聊天窗口或画图">
                 复制图片
               </button>
             </div>

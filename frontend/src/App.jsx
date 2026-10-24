@@ -5,6 +5,9 @@ import ImageExportModal from './components/ImageExportModal'
 import { formatOverwriteTooltip } from './utils/overwriteTooltip'
 import { UploadIcon, SunIcon, MoonIcon, JsonIcon } from './components/icons'
 
+// 键盘总键数：与后端 QWERTY_LAYOUT 一致（71 键），用于「已设置 23 / 71」的进度表达
+const TOTAL_KEYS = 71
+
 function useTheme() {
   const [theme, setTheme] = useState(() => localStorage.getItem('kt-theme') === 'dark' ? 'dark' : 'light')
   // 用 layout effect 写 data-theme：在浏览器绘制前生效（避免首屏闪白），
@@ -191,64 +194,91 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="header">
+      <header className="site-head">
         <div>
-          <h1>
+          <p className="wordmark">
             Key<span className="accent">Tagger</span>
-          </h1>
-          <p className="subtitle">上传游戏键位截图，自动识别并可视化编辑</p>
+          </p>
+          <p className="tagline">上传键位截图，识别成可编辑的键盘图</p>
         </div>
         <button
           className="icon-btn"
           onClick={toggleTheme}
-          title={theme === 'dark' ? '切换到浅色' : '切换到暗色'}
+          aria-label={theme === 'dark' ? '切换到浅色主题' : '切换到深色主题'}
+          title={theme === 'dark' ? '切换到浅色主题' : '切换到深色主题'}
         >
           {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
         </button>
       </header>
 
-      <main className="main">
-        <section className="upload-section">
+      <main>
+        <section aria-labelledby="upload-heading">
+          <h2 id="upload-heading" className="visually-hidden">上传键位截图</h2>
           {fileInput}
-          <div
-            className={`upload-zone ${dragActive ? 'drop-active' : ''} ${loading ? 'uploading' : ''}`}
-            onClick={() => !loading && fileInputRef.current?.click()}
+          {/* 上传槽是语义化按钮：可 Tab 聚焦、Enter/Space 触发；内部用 span 保持合法嵌套 */}
+          <button
+            type="button"
+            className={`upload-slot${keyCount > 0 ? ' is-compact' : ''}` +
+              `${dragActive ? ' is-drop-active' : ''}${loading ? ' is-busy' : ''}`}
+            onClick={() => fileInputRef.current?.click()}
+            disabled={loading}
+            aria-describedby={keyCount === 0 ? 'upload-formats upload-privacy' : undefined}
           >
-            {/* 空闲态与加载态叠放在同一网格单元：识别中隐藏空闲态但保留占位，上传区尺寸不变 */}
-            <div className="upload-idle">
-              <span className="upload-icon-sm">
-                <UploadIcon size={20} />
+            {/* 空闲态与加载态叠放在同一网格单元：识别中隐藏空闲态但保留占位，上传槽尺寸不变 */}
+            <span className="slot-idle">
+              <span className="slot-icon">
+                <UploadIcon size={18} />
               </span>
-              <span className="upload-text">点击或拖拽截图或键位文件到此处上传</span>
-              <span className="upload-hints">
-                <span className="upload-hint">支持 PNG / JPG / WebP / BMP 截图与 .json 键位文件 · 可拖到页面任意位置</span>
-                <span className="upload-hint">导入 JSON 会覆盖对应键位 · 仅在本地处理</span>
+              <span className="slot-body">
+                <span className="slot-title">拖入截图，或点此选择文件</span>
+                {/* 首次使用给出完整格式说明；已有结果后收成一行，把版面还给键盘 */}
+                {keyCount === 0 ? (
+                  <>
+                    <span className="slot-meta" id="upload-formats">
+                      PNG / JPG / WebP / BMP 截图 · .json 键位文件 · 可拖到页面任意位置
+                    </span>
+                    <span className="slot-meta" id="upload-privacy">
+                      导入 JSON 会覆盖同名键位 · 全程仅在本机处理
+                    </span>
+                  </>
+                ) : (
+                  <span className="slot-meta">
+                    PNG / JPG / WebP / BMP · .json · 全程仅在本机处理
+                  </span>
+                )}
               </span>
-            </div>
-            <div className="upload-loading">
-              <div className="spinner" />
-              <span className="upload-text">{importing ? '正在导入中...' : '正在识别中...'}</span>
-            </div>
-          </div>
-          {notice && <div className="notice-message" role="status">{notice.text}</div>}
-          {error && <div className="error-message">{error}</div>}
+            </span>
+            <span className="slot-busy">
+              <span className="spinner" aria-hidden="true" />
+              <span className="slot-title" role="status">
+                {importing ? '正在导入…' : '正在识别…'}
+              </span>
+            </span>
+          </button>
+          {notice && <div className="alert alert-notice" role="status">{notice.text}</div>}
+          {error && <div className="alert alert-error" role="alert">{error}</div>}
         </section>
 
         <section
-          className={`keyboard-section${background ? ' has-bg' : ''}`}
+          className={`plate plate-board${background ? ' has-bg' : ''}`}
           style={background ? { backgroundImage: `url("${background.src}")` } : undefined}
+          aria-labelledby="board-heading"
         >
-          <div className="section-header">
-            <h2>键盘布局</h2>
-            <div className="section-actions">
-              <span className="key-count">已识别 {keyCount} 个按键</span>
+          <div className="plate-head">
+            <div className="plate-leading">
+              <h2 className="plate-title" id="board-heading">键盘布局</h2>
+              <span className="key-tally">
+                已设置 <b>{keyCount}</b> / {TOTAL_KEYS} 键
+              </span>
+            </div>
+            <div className="plate-actions">
               <button
-                className={`btn ${confirmingReset ? 'btn-reset-armed' : 'btn-secondary'}`}
+                className={`btn btn-key${confirmingReset ? ' btn-danger' : ''}`}
                 onClick={handleResetClick}
                 disabled={keyCount === 0}
                 title="清空全部按键绑定（需再点一次确认）"
               >
-                {confirmingReset ? '确认重置？' : '重置'}
+                {confirmingReset ? '确认清空？' : '清空绑定'}
               </button>
               {/* 背景图同时作用于屏幕键盘与生成图片（同一套规则与效果） */}
               <input
@@ -262,21 +292,28 @@ export default function App() {
                 hidden
               />
               <button
-                className="btn btn-teal"
+                className="btn btn-key"
                 onClick={() => bgInputRef.current?.click()}
-                title={background
-                  ? `当前背景：${backgroundName}（点击更换）`
-                  : '为键盘布局与生成图片设置同一张背景'}
+                title={background ? '更换键盘与生成图片的背景' : '为键盘布局与生成图片设置同一张背景'}
               >
-                {background ? '更换背景' : '选择背景'}
+                背景图
               </button>
               {background && (
-                <button className="link-btn" onClick={clearBackground} title="移除背景，恢复纯色键盘">
-                  移除
-                </button>
+                <span className="bg-chip">
+                  <span className="bg-chip-name" title={backgroundName}>{backgroundName}</span>
+                  <button
+                    type="button"
+                    className="bg-chip-x"
+                    onClick={clearBackground}
+                    aria-label={`移除背景图 ${backgroundName}`}
+                    title="移除背景图，恢复纯色键盘"
+                  >
+                    ×
+                  </button>
+                </span>
               )}
               <button
-                className="btn btn-primary"
+                className="btn btn-key"
                 onClick={exportKeymap}
                 disabled={keyCount === 0}
                 title="把当前键位导出为 keymap.json（可再次导入）"
@@ -284,7 +321,7 @@ export default function App() {
                 导出 JSON
               </button>
               <button
-                className="btn btn-success"
+                className="btn btn-primary"
                 onClick={() => setImageModalOpen(true)}
                 disabled={keyCount === 0}
                 title="按当前键盘生成键位图，可复制到剪贴板或下载 PNG"
@@ -293,55 +330,74 @@ export default function App() {
               </button>
             </div>
           </div>
-          <KeymapKeyboard />
-          <p className="keyboard-hint">点击任意按键可编辑其功能名称，拖拽已绑定按键可移动到其他按键上</p>
+          {keyCount === 0 && (
+            <p className="board-empty">
+              还没有识别结果。上传一张键位截图，或导入 <b>keymap.json</b> 开始。
+            </p>
+          )}
+          <div className="board-scroll">
+            <KeymapKeyboard />
+          </div>
+          <p className="hint">
+            点击按键编辑功能，拖动已设置的按键可换位
+            {/* 窄屏下键盘在自己的容器里横滚，这里明确说出来，避免以为内容被裁掉 */}
+            <span className="scroll-tip">· 左右滑动查看整张键盘</span>
+          </p>
         </section>
 
         {uploads.length > 0 && (
-          <section className="shots-section">
-            <div className="section-header">
-              <h2>导入记录</h2>
-              <span className="key-count">点击截图可查看原图</span>
+          <section className="records" aria-labelledby="records-heading">
+            <div className="records-head">
+              <h2 className="plate-title" id="records-heading">本次记录</h2>
+              <span className="key-tally">共 {uploads.length} 条</span>
             </div>
-            <div className="shots-list">
-              {uploads.map((item) => (
-                <div
-                  key={item.key}
-                  className={`shot-row ${item.refreshed ? 'shot-row-fresh' : ''}`}
-                  onClick={() => item.kind === 'image' && setPreviewUrl(item.url)}
-                  title={item.kind === 'image' ? '点击查看原图' : 'JSON 键位文件'}
-                >
-                  {item.kind === 'json' ? (
-                    <span className="shot-thumb shot-thumb-json">
-                      <JsonIcon size={24} />
+            <div className="records-list">
+              {uploads.map((item) => {
+                const clickable = item.kind === 'image'
+                const Row = clickable ? 'button' : 'div'
+                return (
+                  <Row
+                    key={item.key}
+                    {...(clickable ? { type: 'button', onClick: () => setPreviewUrl(item.url) } : {})}
+                    className={`record${clickable ? '' : ' is-static'}${item.refreshed ? ' is-fresh' : ''}`}
+                    title={clickable ? '点击查看原图' : 'JSON 键位文件'}
+                  >
+                    {item.kind === 'json' ? (
+                      <span className="record-thumb record-json" aria-hidden="true">
+                        <JsonIcon size={22} />
+                      </span>
+                    ) : (
+                      <img src={item.url} className="record-thumb" alt="" />
+                    )}
+                    <span className="record-name">{item.name}</span>
+                    <span className="record-count">
+                      {item.kind === 'json' ? '导入' : '识别'} <b>{item.count}</b> 键
                     </span>
-                  ) : (
-                    <img src={item.url} className="shot-thumb" alt={item.name} />
-                  )}
-                  <span className="shot-name">{item.name}</span>
-                  <span className="shot-count">
-                    {item.kind === 'json'
-                      ? <>已导入 <b>{item.count}</b> 个按键</>
-                      : <>已识别 <b>{item.count}</b> 个按键</>}
-                  </span>
-                  {item.overwritten > 0 && (
-                    <span
-                      className="shot-overwrite"
-                      title={formatOverwriteTooltip(item.overwrites)}
-                    >
-                      覆盖 <b>{item.overwritten}</b> 个
-                    </span>
-                  )}
-                </div>
-              ))}
+                    {item.overwritten > 0 && (
+                      <span
+                        className="record-over"
+                        title={formatOverwriteTooltip(item.overwrites)}
+                      >
+                        覆盖 <b>{item.overwritten}</b>
+                      </span>
+                    )}
+                  </Row>
+                )
+              })}
             </div>
           </section>
         )}
       </main>
 
       {previewUrl && (
-        <div className="lightbox" onClick={() => setPreviewUrl(null)}>
-          <img src={previewUrl} alt="截图预览" />
+        <div
+          className="lightbox"
+          onClick={() => setPreviewUrl(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="截图原图预览"
+        >
+          <img src={previewUrl} alt="截图原图" />
         </div>
       )}
 
@@ -349,8 +405,6 @@ export default function App() {
         <ImageExportModal
           keymap={keymap}
           background={background}
-          theme={theme}
-          onToggleTheme={toggleTheme}
           onClose={() => setImageModalOpen(false)}
         />
       )}

@@ -12,28 +12,38 @@ function escapeHtml(text) {
   ))
 }
 
+// 功能名的纯文本版（用于按钮的 title / aria-label）：去掉空白并限长，避免提示框过宽
+function plainFunction(text) {
+  return String(text || '').replace(/\s+/g, ' ').trim()
+}
+
 export default function KeymapKeyboard() {
   const { keymap, moveKey, updateKey } = useKeymap()
   const [editingKey, setEditingKey] = useState(null)
   const [editValue, setEditValue] = useState('')
   const kRef = useRef(null)
-  const pendingEditRef = useRef(null)
   const dragSourceRef = useRef(null)
   const dragElementRef = useRef(null)
   const dropTargetRef = useRef(null)
+  const editModalRef = useRef(null)
+  const restoreFocusRef = useRef(null) // 弹窗关闭后把焦点还给触发它的按键
 
+  // 同步每个按键的可拖拽状态、title 与 aria-label：
+  // 键盘是 71 个真实 <button>（useButtonTag），读屏与 Tab 都能到达，
+  // 需要一个能说清「哪个键、绑了什么」的可访问名称
   useEffect(() => {
     const kb = kRef.current
     if (!kb) return
     Object.entries(KEY_MAP).forEach(([button, keyName]) => {
       const elements = kb.getButtonElement(button)
       const list = Array.isArray(elements) ? elements : [elements]
-      const fn = keymap[keyName]?.function || ''
+      const fn = plainFunction(keymap[keyName]?.function)
+      const label = keymap[keyName]?.label || keyName
       list.forEach((el) => {
-        if (el) {
-          el.draggable = Boolean(fn)
-          el.title = fn
-        }
+        if (!el) return
+        el.draggable = Boolean(fn)
+        el.title = fn ? `${label}：${fn}` : `${label}（未设置，点击编辑）`
+        el.setAttribute('aria-label', fn ? `${label}，已设置：${fn}` : `${label}，未设置`)
       })
     })
   }, [keymap])
@@ -44,13 +54,58 @@ export default function KeymapKeyboard() {
       const mapping = keymap[keyName]
       if (mapping?.function) {
         // 功能名为主内容（CSS 限 2 行截断，全文见按钮 title），原键帽标签缩为右下角标
-        d[layoutKey] = `<span class="hg-key-fn">${escapeHtml(mapping.function)}</span><span class="hg-key-tag">${mapping.label}</span>`
+        d[layoutKey] = `<span class="hg-key-fn">${escapeHtml(mapping.function)}</span><span class="hg-key-tag">${escapeHtml(mapping.label)}</span>`
       } else {
-        d[layoutKey] = mapping?.label || keyName
+        d[layoutKey] = escapeHtml(mapping?.label || keyName)
       }
     }
     return d
   }, [keymap])
+
+  // 本批写入的键做一次「印刷上色」：keymap 变化时对比上一次的绑定，只让新增/改写的键动
+  const prevKeymapRef = useRef({})
+  const freshTimerRef = useRef(null)
+  useEffect(() => {
+    const kb = kRef.current
+    const prev = prevKeymapRef.current
+    prevKeymapRef.current = keymap
+    if (!kb) return
+    const changed = Object.keys(keymap).filter(
+      (keyName) => (keymap[keyName]?.function || '') !== (prev[keyName]?.function || ''),
+    )
+    if (!changed.length) return
+    changed.slice(0, 71).forEach((keyName, index) => {
+      const button = Object.keys(KEY_MAP).find((b) => KEY_MAP[b] === keyName)
+      if (!button) return
+      const el = kb.getButtonElement(button)
+      const list = Array.isArray(el) ? el : [el]
+      list.forEach((node) => {
+        if (!node) return
+        // 错峰 12ms，总时长封顶：只用 opacity/filter，不动 transform 与尺寸
+        node.style.animationDelay = `${Math.min(index * 12, 320)}ms`
+        node.classList.remove('hg-key-fresh')
+        // 强制重排以重启动画（同一键连续两次写入也能重放）
+        void node.offsetWidth
+        node.classList.add('hg-key-fresh')
+      })
+    })
+    clearTimeout(freshTimerRef.current)
+    freshTimerRef.current = setTimeout(() => {
+      const instance = kRef.current
+      if (!instance) return
+      Object.keys(KEY_MAP).forEach((button) => {
+        const el = instance.getButtonElement(button)
+        const list = Array.isArray(el) ? el : [el]
+        list.forEach((node) => {
+          if (!node) return
+          node.classList.remove('hg-key-fresh')
+          node.style.animationDelay = ''
+        })
+      })
+    }, 700)
+  }, [keymap])
+
+  useEffect(() => () => clearTimeout(freshTimerRef.current), [])
 
   const boundButtons = Object.entries(KEY_MAP)
     .filter(([, kn]) => keymap[kn]?.function)
@@ -63,22 +118,24 @@ export default function KeymapKeyboard() {
     return { el, keyName }
   }, [])
 
-  const handleKeyPress = useCallback((button) => {
-    const keyName = KEY_MAP[button]
-    if (!keyName) return
-    pendingEditRef.current = keyName
+  const handleKeyPress = useCallback(() => {
+    // 点击由下方的原生 click 统一处理（见 handleClick）；
+    // 键盘上的 Enter/Space 会同时触发 click 与 keyPress，这里不重复开弹窗
   }, [])
 
-  const handleClick = useCallback((e) => {
-    const { keyName } = getPointedKey(e)
-    pendingEditRef.current = null
-    if (!keyName) return
+  const openEditor = useCallback((keyName, el) => {
+    restoreFocusRef.current = el || null
     setEditingKey(keyName)
     setEditValue(keymap[keyName]?.function || '')
-  }, [getPointedKey, keymap])
+  }, [keymap])
+
+  const handleClick = useCallback((e) => {
+    const { el, keyName } = getPointedKey(e)
+    if (!keyName) return
+    openEditor(keyName, el)
+  }, [getPointedKey, openEditor])
 
   const handleSave = useCallback(() => {
-    pendingEditRef.current = null
     if (editingKey) {
       updateKey(editingKey, editValue)
     }
@@ -87,7 +144,6 @@ export default function KeymapKeyboard() {
   }, [editingKey, editValue, updateKey])
 
   const handleCancel = useCallback(() => {
-    pendingEditRef.current = null
     setEditingKey(null)
     setEditValue('')
   }, [])
@@ -96,10 +152,23 @@ export default function KeymapKeyboard() {
     if (editingKey) {
       updateKey(editingKey, '')
     }
-    pendingEditRef.current = null
     setEditingKey(null)
     setEditValue('')
   }, [editingKey, updateKey])
+
+  // 弹窗打开时把焦点移入输入框，关闭后归还给触发它的按键
+  useEffect(() => {
+    if (editingKey) {
+      const input = editModalRef.current?.querySelector('input')
+      if (input) input.focus()
+      return
+    }
+    const target = restoreFocusRef.current
+    if (target && document.contains(target)) {
+      target.focus()
+    }
+    restoreFocusRef.current = null
+  }, [editingKey])
 
   const clearDragHighlights = useCallback(() => {
     if (dropTargetRef.current) {
@@ -113,7 +182,6 @@ export default function KeymapKeyboard() {
   }, [])
 
   const handleDragStart = useCallback((e) => {
-    pendingEditRef.current = null
     const { el, keyName } = getPointedKey(e)
     if (!keyName || !keymap[keyName]?.function) {
       e.preventDefault()
@@ -144,7 +212,6 @@ export default function KeymapKeyboard() {
 
   const handleDrop = useCallback((e) => {
     e.preventDefault()
-    pendingEditRef.current = null
     const { keyName: targetKey } = getPointedKey(e)
     const sourceKey = dragSourceRef.current || e.dataTransfer.getData('text/plain')
     clearDragHighlights()
@@ -164,6 +231,9 @@ export default function KeymapKeyboard() {
     if (e.key === 'Escape') handleCancel()
   }, [handleSave, handleCancel])
 
+  const editLabel = editingKey ? (keymap[editingKey]?.label || editingKey) : ''
+  const editFn = editingKey ? (keymap[editingKey]?.function || '') : ''
+
   return (
     <div
       className="keyboard-container"
@@ -173,43 +243,74 @@ export default function KeymapKeyboard() {
       onDrop={handleDrop}
       onDragEnd={handleDragEnd}
     >
+      {/* useButtonTag：71 个键是真实 <button>，可 Tab 聚焦、Enter/Space 打开编辑 */}
       <Keyboard
         keyboardRef={(instance) => { kRef.current = instance }}
         layout={LAYOUT}
         display={display}
         onKeyPress={handleKeyPress}
+        useButtonTag
         buttonTheme={boundButtons ? [{ class: 'hg-key-has-function', buttons: boundButtons }] : []}
       />
 
       {editingKey && (
-        <div className="edit-overlay" onClick={handleCancel}>
-          <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>
+        <div className="modal-layer" onClick={handleCancel}>
+          <div
+            className="modal modal-edit"
+            ref={editModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-title"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              // 焦点陷阱：Tab 只在弹窗内循环，避免跑到背后的键盘上
+              if (e.key !== 'Tab') return
+              const focusables = e.currentTarget.querySelectorAll(
+                'button, input, [tabindex]:not([tabindex="-1"])',
+              )
+              if (!focusables.length) return
+              const first = focusables[0]
+              const last = focusables[focusables.length - 1]
+              if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault()
+                last.focus()
+              } else if (!e.shiftKey && document.activeElement === last) {
+                e.preventDefault()
+                first.focus()
+              }
+            }}
+          >
+            <h3 className="modal-title" id="edit-title">
               编辑按键
-              <span className="edit-key-badge">{keymap[editingKey]?.label || editingKey}</span>
+              <span className="key-badge">{editLabel}</span>
             </h3>
-            <p className="edit-hint">输入该按键对应的游戏功能名称</p>
-            <input
-              type="text"
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="例如：前进、跳跃、开火..."
-              autoFocus
-            />
-            <div className="edit-actions">
-              {keymap[editingKey]?.function && (
+            <p className="modal-hint">
+              {editFn ? `当前功能：${plainFunction(editFn)}` : '这个按键还没有功能名称'}
+            </p>
+            <label className="field">
+              <span className="visually-hidden">功能名称</span>
+              <input
+                className="text-input"
+                type="text"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="例如：前进、跳跃、开火…"
+              />
+            </label>
+            <div className="modal-foot">
+              {editFn && (
                 <button
-                  className="btn btn-danger-ghost"
+                  className="btn btn-danger-quiet"
                   onClick={handleUnbind}
                   title="清空该按键的功能名称"
                 >
                   解除绑定
                 </button>
               )}
-              <div className="edit-actions-right">
+              <div className="modal-foot-right">
                 <button
-                  className="btn btn-secondary"
+                  className="btn btn-key"
                   onClick={handleCancel}
                   title="关闭弹窗，不保存修改（Esc）"
                 >
