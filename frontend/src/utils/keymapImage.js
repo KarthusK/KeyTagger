@@ -46,30 +46,40 @@ function pageFont() {
 
 // 主题配色：Canvas 读取页面 CSS 变量，使导出图跟随应用浅色/深色主题；
 // 无 DOM 环境（Node 校验）回退到浅色主题默认值，保证纯逻辑断言稳定。
+// 注意：这里的键名与 styles.css 的令牌一一对应，改令牌必须同时改本表（PALETTE_VARS），
+// 否则导出图会静默掉回兜底色，与屏幕键盘不一致。
 const PALETTE_FALLBACK = {
-  bg: '#ffffff',          // --card：无背景图时的画布底色
-  keyBg: '#ffffff',       // --key-bg
-  keyBorder: '#e2e5ea',   // --key-border
-  keyText: '#374151',     // --key-text
-  boundBg: '#eef2ff',     // --primary-soft
-  boundBorder: '#c7d2fe', // --primary-border
-  text: '#111827',        // --text
-  accent: '#4f46e5',      // --primary
-  muted: '#9ca3af',       // --text-muted
-  scrimRgb: '255, 255, 255',      // --bg-scrim-rgb
-  scrimBoundRgb: '238, 242, 255', // --bg-scrim-bound-rgb
+  plate: '#fcfcfa',        // --plate：无背景图时的画布底色
+  cap: '#ffffff',          // --cap：未绑定键键帽面
+  capBorder: '#c8ccc7',    // --cap-border：键帽 1px 描边
+  capEdge: '#b3b8b2',      // --cap-edge：键帽 3px 底边
+  capLegend: '#23282a',    // --cap-legend：空白键帽刻字
+  capPrinted: '#1e4b42',   // --cap-printed：已绑定键键帽面
+  capPrintedEdge: '#14302a', // --cap-printed-edge：已绑定键底边
+  capLine: '#9dbfb4',      // --cap-line：已绑定键描边
+  ink: '#161a1d',          // --ink：正文/标题
+  inkOnCap: '#eaf2ed',     // --ink-on-cap：印字
+  tagOnCap: '#a5e3cc',     // --tag-on-cap：右下角原键位标签
+  muted: '#5f6764',        // --muted：署名链接等次要文字
+  pine: '#1e4b42',         // --pine：强调色（署名第二段）
+  scrimRgb: '252, 252, 250',      // --bg-scrim-rgb：未绑定键蒙层基色
+  scrimBoundRgb: '30, 75, 66',    // --bg-scrim-bound-rgb：已绑定键蒙层基色
 }
 
 const PALETTE_VARS = {
-  bg: '--card',
-  keyBg: '--key-bg',
-  keyBorder: '--key-border',
-  keyText: '--key-text',
-  boundBg: '--primary-soft',
-  boundBorder: '--primary-border',
-  text: '--text',
-  accent: '--primary',
-  muted: '--text-muted',
+  plate: '--plate',
+  cap: '--cap',
+  capBorder: '--cap-border',
+  capEdge: '--cap-edge',
+  capLegend: '--cap-legend',
+  capPrinted: '--cap-printed',
+  capPrintedEdge: '--cap-printed-edge',
+  capLine: '--cap-line',
+  ink: '--ink',
+  inkOnCap: '--ink-on-cap',
+  tagOnCap: '--tag-on-cap',
+  muted: '--muted',
+  pine: '--pine',
   scrimRgb: '--bg-scrim-rgb',
   scrimBoundRgb: '--bg-scrim-bound-rgb',
 }
@@ -91,11 +101,12 @@ export function pagePalette(root) {
 
 // 背景效果默认值：屏幕端由 styles.css 的同名 CSS 变量提供，Canvas 读取同一变量，
 // 保证「键盘布局」与「生成图片」用的是同一套数值（Node 等无 CSS 环境回退到这里的默认值）
-export const BACKGROUND_DEFAULTS = { blur: 10, scrim: 0.62 }
+export const BACKGROUND_DEFAULTS = { blur: 10, scrim: 0.78, scrimBound: 0.88 }
 
 const CSS_NUMBER_DEFAULTS = {
   '--bg-blur': BACKGROUND_DEFAULTS.blur,
   '--bg-scrim': BACKGROUND_DEFAULTS.scrim,
+  '--bg-scrim-bound': BACKGROUND_DEFAULTS.scrimBound,
 }
 
 // 满幅背景下给标题/署名加一圈极淡柔光（取当前主题的蒙层基色）：
@@ -296,21 +307,46 @@ function fitTitle(ctx, text, maxWidth, font) {
   return { out, size, width: ctx.measureText(out).width }
 }
 
-// 绘制标题文字（单行居中）；背景模式下加一圈极淡柔光保证可读
-function drawTitleText(ctx, fitted, cx, cy, font, palette, glow = false) {
-  ctx.font = `700 ${fitted.size}px ${font}`
-  ctx.fillStyle = palette.text
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
+// 品牌字样的分段着色规则（标题与署名共用，保证同一张图里前后一致）：
+// 与主界面 wordmark 同款——"Key" 用正文色、其余段（"Tagger"）用强调色。
+// 自定义标题（用户填了别的文字）整段用正文色，避免出现半截上色的怪观感。
+function brandParts(text) {
+  const raw = String(text ?? '')
+  if (raw === BRAND.name && BRAND.nameParts && BRAND.nameParts.length) {
+    return BRAND.nameParts.map((part, i) => ({ text: part, accent: i > 0 }))
+  }
+  return [{ text: raw, accent: false }]
+}
+
+// 绘制按品牌规则分色的文字：align 支持 left/center/right，glow 为背景模式下的柔光
+function drawBrandText(ctx, text, x, y, font, palette, { align = 'left', glow = false } = {}) {
+  const parts = brandParts(text)
+  const widths = parts.map((p) => ctx.measureText(p.text).width)
+  const total = widths.reduce((sum, w) => sum + w, 0)
+  let tx = align === 'center' ? x - total / 2 : align === 'right' ? x - total : x
+
+  ctx.textAlign = 'left'
   if (glow) {
     ctx.shadowColor = `rgba(${palette.scrimRgb}, ${TEXT_GLOW_ALPHA})`
     ctx.shadowBlur = TEXT_GLOW_BLUR
   }
-  ctx.fillText(fitted.out, cx, cy)
+  parts.forEach((p, i) => {
+    if (!p.text) return
+    ctx.fillStyle = p.accent ? palette.pine : palette.ink
+    ctx.fillText(p.text, tx, y)
+    tx += widths[i]
+  })
   if (glow) {
     ctx.shadowColor = 'transparent'
     ctx.shadowBlur = 0
   }
+}
+
+// 绘制标题文字（单行居中）；配色与署名统一，背景模式下加一圈极淡柔光保证可读
+function drawTitleText(ctx, fitted, cx, cy, font, palette, glow = false) {
+  ctx.font = `700 ${fitted.size}px ${font}`
+  ctx.textBaseline = 'middle'
+  drawBrandText(ctx, fitted.out, cx, cy, font, palette, { align: 'center', glow })
 }
 
 // 绘制键位图，返回离屏 canvas（浏览器环境）
@@ -328,18 +364,17 @@ export function renderKeymapImage({ keymap = {}, title = '', watermark = true, s
   const font = pageFont() // 与页面同款字体，保证导出图与界面一致
   const palette = pagePalette(paletteRoot) // 跟随主题（由传入元素或 <html> 决定）
 
-  ctx.fillStyle = palette.bg
+  ctx.fillStyle = palette.plate
   ctx.fillRect(0, 0, geo.width, geo.height)
 
-  // 背景：与屏幕端 .keyboard-section.has-bg 同一套规则，但铺满整张画布（与预览所见一致）。
+  // 背景：与屏幕端 .plate-board.has-bg 同一套规则，但铺满整张画布（与预览所见一致）。
   // 键内绘制虚化副本 + 蒙层；标题/署名不留白底，直接压在背景上（靠柔光保证可读）。
   let blurPanel = null
   let scrimColor = { key: '', bound: '' }
   if (background && background.width > 0 && background.height > 0) {
-    const scrim = cssNumber('--bg-scrim')
     scrimColor = {
-      key: `rgba(${palette.scrimRgb}, ${scrim})`,
-      bound: `rgba(${palette.scrimBoundRgb}, ${scrim})`,
+      key: `rgba(${palette.scrimRgb}, ${cssNumber('--bg-scrim')})`,
+      bound: `rgba(${palette.scrimBoundRgb}, ${cssNumber('--bg-scrim-bound')})`,
     }
 
     // 满幅清晰背景（cover，居中裁剪）
@@ -360,8 +395,9 @@ export function renderKeymapImage({ keymap = {}, title = '', watermark = true, s
     const mapping = keymap[box.keyName]
     const fn = mapping?.function || ''
     const label = mapping?.label || box.keyName || box.token
-    const borderColor = fn ? palette.boundBorder : palette.keyBorder
-    const fillColor = fn ? palette.boundBg : palette.keyBg
+    const borderColor = fn ? palette.capLine : palette.capBorder
+    const fillColor = fn ? palette.capPrinted : palette.cap
+    const edgeColor = fn ? palette.capPrintedEdge : palette.capEdge
 
     if (blurPanel) {
       // 有背景：与无背景分支（即界面 CSS border-box）同一套双层圆角矩形几何——
@@ -381,10 +417,22 @@ export function renderKeymapImage({ keymap = {}, title = '', watermark = true, s
       ctx.fillRect(ix, iy, iw, ih)
       ctx.restore()
     } else {
-      // 无背景（保持现状）：先按边框色填充整个圆角矩形，再叠一层内层圆角矩形 → 1px 描边 + 3px 底边
+      // 无背景：严格复刻界面 CSS 的 border-box 观感——
+      // 1px 描边（--cap-border / --cap-line）+ 底部 3px 更深的侧边（--cap-edge / --cap-printed-edge）。
+      // 先整体填描边色，再把底部 3px 用侧边色覆盖，最后内缩填键帽面。
       roundRectPath(ctx, box.x, box.y, box.w, box.h, KEY_R)
       ctx.fillStyle = borderColor
       ctx.fill()
+
+      // 底部 3px 侧边：裁剪在外层圆角内，圆角处过渡平滑（不会出现生硬黑块）
+      ctx.save()
+      roundRectPath(ctx, box.x, box.y, box.w, box.h, KEY_R)
+      ctx.clip()
+      ctx.fillStyle = edgeColor
+      ctx.fillRect(box.x, box.y + box.h - BORDER_BOTTOM, box.w, BORDER_BOTTOM)
+      ctx.restore()
+
+      // 键帽面：上/左/右各内缩 1px，底部内缩 3px，形成描边 + 侧边
       roundRectPath(
         ctx,
         box.x + BORDER_TOP,
@@ -395,39 +443,55 @@ export function renderKeymapImage({ keymap = {}, title = '', watermark = true, s
       )
       ctx.fillStyle = fillColor
       ctx.fill()
+
+      // 顶面高光：一条极淡的 1px 亮线，对应界面 box-shadow: inset 0 1px 0（空键才有）
+      if (!fn) {
+        ctx.save()
+        roundRectPath(
+          ctx,
+          box.x + BORDER_TOP,
+          box.y + BORDER_TOP,
+          box.w - BORDER_TOP * 2,
+          box.h - BORDER_TOP - BORDER_BOTTOM,
+          Math.max(1, KEY_R - BORDER_TOP),
+        )
+        ctx.clip()
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.10)'
+        ctx.fillRect(box.x, box.y + BORDER_TOP, box.w, 1)
+        ctx.restore()
+      }
     }
 
-    // 内容区中心：对齐 .hg-button 的 padding(4px 6px 7px) 与 1px/3px 边框
-    const centerY = box.y + (box.h - 5) / 2
+    // 内容区中心：对齐 .hg-button 的 padding(5px 6px 8px) 与 1px/3px 边框
+    const centerY = box.y + (box.h - 6) / 2
     const maxTextW = Math.max(8, box.w - 14)
 
     if (fn) {
-      // 已绑定：功能名居中（最多 2 行，对齐 .hg-key-fn 的 11px/1.3/2 行），键帽标签缩到右下角
-      ctx.font = `600 11px ${font}`
+      // 已绑定：功能名居中（最多 2 行，对齐 .hg-key-fn 的 12px/1.25/2 行），键帽标签缩到右下角
+      ctx.font = `600 12px ${font}`
       const lines = wrapText(ctx, fn, maxTextW, 2)
-      ctx.fillStyle = palette.text
+      ctx.fillStyle = palette.inkOnCap
       ctx.textAlign = 'center'
       ctx.textBaseline = 'alphabetic'
-      const lineH = 14.3
-      const startY = centerY - ((lines.length - 1) * lineH) / 2
+      const lineH = 15
+      // 文本整体上移，给右下角角标留出空间（与界面 .hg-key-fn 的 padding-bottom 对应）
+      const startY = centerY - ((lines.length - 1) * lineH) / 2 - 4
       const fnOff = fontCenterOffset(ctx)
       lines.forEach((line, i) => ctx.fillText(line, box.x + box.w / 2, startY + i * lineH + fnOff))
 
       // 角标：对齐界面 .hg-key-tag 的 right:4px / bottom:3px（相对 padding box）、line-height:1 底边锚定
       ctx.font = `600 ${TAG_SIZE}px ${font}`
-      ctx.fillStyle = palette.accent
-      ctx.globalAlpha = 0.85
+      ctx.fillStyle = palette.tagOnCap
       ctx.textAlign = 'right'
       ctx.fillText(
         label,
         box.x + box.w - BORDER_TOP - 4,
         box.y + box.h - BORDER_BOTTOM - 3 - TAG_SIZE / 2 + fontCenterOffset(ctx),
       )
-      ctx.globalAlpha = 1
     } else {
-      // 未绑定：只显示键帽标签（对齐界面 13px/400 与 --key-text）
-      ctx.font = `400 13px ${font}`
-      ctx.fillStyle = palette.keyText
+      // 未绑定：只显示键帽标签（对齐界面 12.5px/500 与 --cap-legend）
+      ctx.font = `500 12.5px ${font}`
+      ctx.fillStyle = palette.capLegend
       ctx.textAlign = 'center'
       ctx.textBaseline = 'alphabetic'
       ctx.fillText(label, box.x + box.w / 2, centerY + fontCenterOffset(ctx))
@@ -435,36 +499,18 @@ export function renderKeymapImage({ keymap = {}, title = '', watermark = true, s
   })
 
   if (geo.signature) {
-    // 项目名分两段着色（与主界面标题同款：Key 用 --text，Tagger 用 --primary），整体右对齐
+    // 项目名与标题共用 drawBrandText：同一套分段着色（Key 用 --ink，Tagger 用 --pine）
     ctx.textBaseline = 'alphabetic'
     ctx.font = `700 17px ${font}`
-    const parts = BRAND.nameParts && BRAND.nameParts.length ? BRAND.nameParts : [BRAND.name]
-    const totalW = parts.reduce((sum, part) => sum + ctx.measureText(part).width, 0)
-
-    // 不留白底：直接压在背景上，仅靠极淡柔光保证可读（柔光取当前主题的蒙层基色）
-    if (blurPanel) {
-      ctx.shadowColor = `rgba(${palette.scrimRgb}, ${TEXT_GLOW_ALPHA})`
-      ctx.shadowBlur = TEXT_GLOW_BLUR
-    }
-
-    ctx.font = `700 17px ${font}`
-    let tx = geo.signature.x - totalW
-    ctx.textAlign = 'left'
-    parts.forEach((part, i) => {
-      ctx.fillStyle = i === 0 ? palette.text : palette.accent
-      ctx.fillText(part, tx, geo.signature.y)
-      tx += ctx.measureText(part).width
+    drawBrandText(ctx, BRAND.name, geo.signature.x, geo.signature.y, font, palette, {
+      align: 'right',
+      glow: Boolean(blurPanel),
     })
 
     ctx.textAlign = 'right'
     ctx.font = `400 13px ${font}`
     ctx.fillStyle = palette.muted
     ctx.fillText(BRAND.url, geo.signature.x, geo.signature.urlY)
-
-    if (blurPanel) {
-      ctx.shadowColor = 'transparent'
-      ctx.shadowBlur = 0
-    }
   }
 
   return canvas
