@@ -30,6 +30,23 @@
 }
 ```
 
+## 前端约定（改样式前必读）
+
+- **配色令牌是跨端契约**：`frontend/src/styles.css` 的 `:root` / `[data-theme='dark']` 令牌，与
+  `frontend/src/utils/keymapImage.js` 的 `PALETTE_VARS` 一一对应（导出图用 Canvas 读同名 CSS 变量）。
+  改令牌必须同时改 `PALETTE_VARS` 与 `PALETTE_FALLBACK`，否则导出图会静默退回兜底色、与界面不一致。
+- **新增/删除令牌时同步 `PALETTE_FALLBACK`**：`PALETTE_FALLBACK` 是 Node 等无 DOM 环境的兜底值，
+  也被 `pagePalette()` 用作「CSS 变量取空」时的回退，缺一项就会画出错色。
+- **三层表面**：`--bg`（桌面）/ `--plate`（面板）/ `--case`（键盘机壳）。键帽必须比 `--case` 亮，
+  这是「键帽是凸起实物」这套视觉成立的前提，调色时不要压平这三层。
+- **导出图的文字底带**：有背景时标题与署名要垫 `drawFrostedPlate()`（虚化 + `--bg-plate-scrim`
+  蒙层），与屏幕端 `.plate-board.has-bg .plate-head` 同一做法；直接压字在照片上必然读不清。
+- **键盘改动的两个约束**：① 71 个键用 `useButtonTag` 渲染成真实 `<button>`（可 Tab / Enter / Space），
+  依赖 `data-skbtn` 的委托事件与 `measureKeyboard()` 的实测尺寸不能被破坏；
+  ② 「印刷上色」动画只允许动 `opacity` / `filter`，动 `transform` 会污染 `getBoundingClientRect` 实测。
+- **窄屏**：`.simple-keyboard` 有 `min-width: 720px`，在 `.board-scroll` 内横滚；
+  低于这个宽度中文功能名会一字一行竖排（390px 下每键仅 18px）。
+
 ## 项目结构
 
 ```
@@ -43,7 +60,8 @@ KeyTagger/
 │   └── models.py               # Pydantic 数据模型
 ├── frontend/
 │   ├── src/
-│   │   ├── App.jsx             # 主界面：上传区 / 键盘区 / 截图对照区，主题与背景入口
+│   │   ├── App.jsx             # 主界面：上传槽 / 键盘板 / 本次记录，主题与背景入口
+│   │   ├── styles.css          # 设计令牌与全站样式（导出图共用同一套令牌）
 │   │   ├── components/
 │   │   │   ├── Keyboard.jsx    # 屏幕键盘：渲染、点击编辑、拖拽移动绑定
 │   │   │   ├── ImageExportModal.jsx  # 生成图片弹窗：实时预览、标题/水印、下载与复制
